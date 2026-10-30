@@ -3,7 +3,7 @@
 # the rev flake.lock holds (checks.lock-sync; fix with `sync-locks`).
 inputs:
   pkgs:
-    url: github:external-systems/pkgs
+    url: github:external-systems/pkgs/52bec6a080fb8ead80cb6328f70e7933518ab287
   nixpkgs:
     follows: pkgs/nixpkgs
 imports:
