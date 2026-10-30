@@ -1,0 +1,245 @@
+{
+  "nodes": {
+    "flake-parts": {
+      "inputs": {
+        "nixpkgs-lib": [
+          "pkgs",
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1790898470,
+        "narHash": "sha256-zTwuwezD0w3hpga6a6P8emidzAZFyWqlNeRBlpWOOl8=",
+        "owner": "hercules-ci",
+        "repo": "flake-parts",
+        "rev": "024633cd702b10285db5cb19b40ad48d2399ba60",
+        "type": "github"
+      },
+      "original": {
+        "owner": "hercules-ci",
+        "repo": "flake-parts",
+        "type": "github"
+      }
+    },
+    "import-tree": {
+      "locked": {
+        "lastModified": 1788467110,
+        "narHash": "sha256-ljEMTXP/rH0tOvDzc9gzwww6KcHRPRnEHzd9lK48V7s=",
+        "owner": "denful",
+        "repo": "import-tree",
+        "rev": "eb1b52eaecc57f7c136d07ae8a93e724dfecac46",
+        "type": "github"
+      },
+      "original": {
+        "owner": "denful",
+        "repo": "import-tree",
+        "type": "github"
+      }
+    },
+    "nixpkgs": {
+      "locked": {
+        "lastModified": 1793110635,
+        "narHash": "sha256-dhoW6VgFWlaodSY5jrBn+CF2FLmaUvDVgM7+C7T2+NM=",
+        "owner": "NixOS",
+        "repo": "nixpkgs",
+        "rev": "31ecbaca1bdefa45dffc409f0250bd8039ea0010",
+        "type": "github"
+      },
+      "original": {
+        "owner": "NixOS",
+        "ref": "nixos-unstable",
+        "repo": "nixpkgs",
+        "type": "github"
+      }
+    },
+    "pkgs": {
+      "inputs": {
+        "flake-parts": "flake-parts",
+        "import-tree": "import-tree",
+        "nixpkgs": "nixpkgs"
+      },
+      "locked": {
+        "lastModified": 1793201675,
+        "narHash": "sha256-RnqS6DXV6uz9AJcRv8SEAJcSJamiuwgp1yvH+jNn2Z8=",
+        "owner": "external-systems",
+        "repo": "pkgs",
+        "rev": "9d3976c938b15d68aa3df625519459a3cafcaf59",
+        "type": "github"
+      },
+      "original": {
+        "owner": "external-systems",
+        "repo": "pkgs",
+        "type": "github"
+      }
+    },
+    "root": {
+      "inputs": {
+        "flake-parts": [
+          "pkgs",
+          "flake-parts"
+        ],
+        "nixpkgs": [
+          "pkgs",
+          "nixpkgs"
+        ],
+        "pkgs": "pkgs",
+        "skills-anthropic": "skills-anthropic",
+        "skills-cloudflare": "skills-cloudflare",
+        "skills-fluxcd": "skills-fluxcd",
+        "skills-google": "skills-google",
+        "skills-mattpocock": "skills-mattpocock",
+        "skills-openshell": "skills-openshell",
+        "skills-payloadcms": "skills-payloadcms",
+        "skills-supabase": "skills-supabase",
+        "skills-terraform": "skills-terraform"
+      }
+    },
+    "skills-anthropic": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1791208002,
+        "narHash": "sha256-APw+xMKqRvkLnuQxttiyyIeylrIMSxZovQnw3xEl1C4=",
+        "owner": "anthropics",
+        "repo": "skills",
+        "rev": "683bc88e56f3e09ba94f7055977f3d3aa499f202",
+        "type": "github"
+      },
+      "original": {
+        "owner": "anthropics",
+        "repo": "skills",
+        "type": "github"
+      }
+    },
+    "skills-cloudflare": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1791506243,
+        "narHash": "sha256-UCw/28QVYktCFR1YQsMKWk3U8G8WRpQNIBEUnbX23DU=",
+        "owner": "cloudflare",
+        "repo": "skills",
+        "rev": "a18ffe2a99448ebff262fc87915b0fd14bab9b70",
+        "type": "github"
+      },
+      "original": {
+        "owner": "cloudflare",
+        "repo": "skills",
+        "type": "github"
+      }
+    },
+    "skills-fluxcd": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1790926023,
+        "narHash": "sha256-Qwzr/v4uPVEdfR24+FPwcqQxVFjC1AIaOdHQjfPoxBE=",
+        "owner": "fluxcd",
+        "repo": "agent-skills",
+        "rev": "0d1fa6c46e553d2f264dfcc8c8630c628195f6e4",
+        "type": "github"
+      },
+      "original": {
+        "owner": "fluxcd",
+        "repo": "agent-skills",
+        "type": "github"
+      }
+    },
+    "skills-google": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1791490355,
+        "narHash": "sha256-USpw/XGHXRBUIbOtvgt09hssnxO7+hbFxqjuRp4ma98=",
+        "owner": "google",
+        "repo": "skills",
+        "rev": "aaec8c9a5beeeaf3b9b6efe8a86bd3d24ad0cedd",
+        "type": "github"
+      },
+      "original": {
+        "owner": "google",
+        "repo": "skills",
+        "type": "github"
+      }
+    },
+    "skills-mattpocock": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1791543409,
+        "narHash": "sha256-NljCSZNI3sZ+vbCw7pRdrwR7try4BxOFp4gdjuWYtzs=",
+        "owner": "mattpocock",
+        "repo": "skills",
+        "rev": "49dd158d1076134a641b33efb035946536778336",
+        "type": "github"
+      },
+      "original": {
+        "owner": "mattpocock",
+        "repo": "skills",
+        "type": "github"
+      }
+    },
+    "skills-openshell": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1790564896,
+        "narHash": "sha256-pRLYDqeQZ2HFckZH/QUFCbp4NV7sjQ4ZyyL/6rcShQo=",
+        "owner": "NVIDIA",
+        "repo": "OpenShell",
+        "rev": "6648bd0c290efbc41ba131ee9831ee45cd431f94",
+        "type": "github"
+      },
+      "original": {
+        "owner": "NVIDIA",
+        "ref": "v0.1.2",
+        "repo": "OpenShell",
+        "type": "github"
+      }
+    },
+    "skills-payloadcms": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1783443347,
+        "narHash": "sha256-kX3WMREQpWSr3CeJVUMkyKGWJaryEeUNPHFuwakjDZc=",
+        "owner": "payloadcms",
+        "repo": "skills",
+        "rev": "832d5bc4258ae784f08cb7f03a3a674d6b2fa5f1",
+        "type": "github"
+      },
+      "original": {
+        "owner": "payloadcms",
+        "repo": "skills",
+        "type": "github"
+      }
+    },
+    "skills-supabase": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1790944488,
+        "narHash": "sha256-MKa/ZwI2yfwiqI76uNg7QsX9F6MF2nctOEme6UtwtQM=",
+        "owner": "supabase",
+        "repo": "agent-skills",
+        "rev": "c9be0e931b7930f7d02126d04774d904c381e7d7",
+        "type": "github"
+      },
+      "original": {
+        "owner": "supabase",
+        "repo": "agent-skills",
+        "type": "github"
+      }
+    },
+    "skills-terraform": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1783058190,
+        "narHash": "sha256-utKu3sueu6SdhjmtRa+Osg761YPwdQa6IPhceZsgsn8=",
+        "owner": "antonbabenko",
+        "repo": "terraform-skill",
+        "rev": "0a3a4a66e99001347d36a41e10260a825be3ab62",
+        "type": "github"
+      },
+      "original": {
+        "owner": "antonbabenko",
+        "repo": "terraform-skill",
+        "type": "github"
+      }
+    }
+  },
+  "root": "root",
+  "version": 7
+}
