@@ -59,11 +59,11 @@
         "nixpkgs": "nixpkgs"
       },
       "locked": {
-        "lastModified": 1793397626,
-        "narHash": "sha256-WeDCRNW3ey9JvoW2wHQLFsTg9RQIY0Jni7UFkWkCfhA=",
+        "lastModified": 1793401949,
+        "narHash": "sha256-Qy2v/b1PQVgpSLOt5svrh4obd+w01eGied8ynp1l1TU=",
         "owner": "external-systems",
         "repo": "pkgs",
-        "rev": "52bec6a080fb8ead80cb6328f70e7933518ab287",
+        "rev": "c79334c26393e0dceb5277202cb6f21e51f79b93",
         "type": "github"
       },
       "original": {
