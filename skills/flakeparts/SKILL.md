@@ -99,10 +99,15 @@ purely organizational (`flake-parts/packages/foo.nix` defines
   a service's NixOS config, a docs site — publish each; consolidate
   later. Several flakes may live in one repo (monorepo-friendly).
 
-## The lint gate (worked example)
+## The lint gate
 
-Format/lint as a hard `checks.lint` derivation — fails `nix flake check`,
-which CI already runs:
+The org gate is `checks.treefmt` from `inputs.pkgs.flakeModules.treefmt`,
+imported in the repo's `dev` partition (the `nix-style` skill's org
+flake standard). The hand-rolled form below is legacy, kept for repos
+not yet converged — do not add it to new repos.
+
+Legacy: format/lint as a hard `checks.lint` derivation — fails `nix
+flake check`, which CI already runs:
 
 ```nix
 # flake-parts/checks.nix

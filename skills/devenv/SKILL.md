@@ -62,14 +62,22 @@ Two usage modes exist and they compose:
 
 The two modes can be combined so one shared module feeds both — that is
 exactly what the borg repo does (see [the worked
-example](#worked-example-borg)). Why the CLI is the better default for
-the day-to-day dev shell even in a flake repo: the flake embedding
-gains nothing for plain shell entry (`nix develop` vs `devenv shell`)
-while giving up the CLI's container builds, eval caching, GC
-protection, and cross-project references; upstream's own template set
-(`devenv init`, `devenv generate`) assumes CLI-native mode. Keep flake
-`devShells` only where CI or flake consumers need the shell as an
-output.
+example](#worked-example-borg)).
+
+**Org default (flake repos):** flake mode inside the repo's `dev`
+flake-parts partition. The `devenv` input lives in `dev/flake.nix`
+(locked in `dev/flake.lock`, never the main `flake.lock`), the dev
+partition imports `inputs.pkgs.flakeModules.dev` (devenv flakeModule,
+pure-eval `devenv.root` fallback, containers off, treefmt in the shell),
+and the shell itself is `devenv/default.nix`, imported with
+`perSystem.devenv.shells.default.imports = [../devenv];`. Templates: the
+`nix-style` skill's `references/flake-standard.md`.
+
+The CLI side (`devenv.yaml` + `devenv.lock`, `devenv shell`,
+auto-activation, `devenv mcp`, processes, devcontainer) is an opt-in
+add-on, because it is a third lockfile. Add it when a repo needs those
+features, reusing `devenv/default.nix` as in the borg example, with its
+drift check pointed at `dev/flake.lock`.
 
 ## devenv 2.x alert
 
@@ -333,7 +341,9 @@ from one shared module** — the pattern to copy:
 
 1. **Flake-parts mode** (`nix develop`): `flake.nix` pins
    `devenv.url = "github:cachix/devenv?ref=v2.3.1";` and imports
-   `inputs.devenv.flakeModule`. `flake-parts/devShells.nix` declares
+   `inputs.devenv.flakeModule`. (borg predates the org standard: new
+   repos put this input in `dev/flake.nix` and get the import from
+   `inputs.pkgs.flakeModules.dev`.) `flake-parts/devShells.nix` declares
    the shell and a cacheable package alias:
 
    ```nix

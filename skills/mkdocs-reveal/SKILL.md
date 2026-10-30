@@ -27,7 +27,11 @@ never copied build code.
 Three edits. Full annotated versions of every snippet are in
 `references/consumption.md`.
 
-**1. Add the input** (flake.nix):
+**1. Add the input** (in an org flake repo: `dev/flake.nix`, following
+`dev-nixpkgs`, so docs never reach the main `flake.lock`; the module in
+step 2 then lives in `documentation/module.nix`, imported from the dev
+partition. See the `nix-style` skill's org flake standard. Otherwise
+flake.nix):
 
 ```nix
 inputs.presenting = {
