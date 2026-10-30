@@ -153,6 +153,24 @@ Gates:
 - `treefmt`: alejandra, deadnix, statix, nixf-diagnose, shellcheck, sizelint.
 - `lock-sync`: flake.lock, dev/flake.lock and devenv.lock pin one nixpkgs.
 - The preset trees and `skills-runtime` build.
+- `package-skills`: the claude.ai zips unpack to valid skills that
+  `skills-drift` reads as in sync.
+
+## claude.ai account skills
+
+The repo is the source of truth; the account holds uploaded copies, and
+nothing pushes them automatically. After a skill changes on `main`:
+
+```sh
+nix run .#skills-drift           # in a cloud session: missing/stale skills
+nix run .#package-skills -- out  # out/<name>.zip + out/manifest.json
+```
+
+Upload the listed zips in claude.ai settings. Each packaged SKILL.md
+carries `metadata.source-rev` and `metadata.content-hash` (the source tree
+is never stamped), so `skills-drift` matches an upload to its repo state.
+Skill files synced into a session are a read-only cache: editing them
+changes nothing on the account.
 
 ## Open the PR
 
