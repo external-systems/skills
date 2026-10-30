@@ -13,7 +13,7 @@ literals or tokens in any file. To add or wire a skill, load the
 - `lib/mk-skills.nix`: `mkSkills`/`skillSet`, a drop-in for the AGENTS flake's `mkSkills`. `lib/mk-skills-runtime.nix`: the runtime buildEnv. `lib/check-skill-metadata.py`: frontmatter validator.
 - `runtime/default.nix`: per-skill runtime needs (`packages`, `python`, `node`, `office`). `runtime/npm/`: npm modules on `NODE_PATH`.
 - `dev/flake.nix` + `dev/flake.lock`: dev-only inputs (treefmt-nix, presenting). `dev/flake-module.nix`: the `dev` flake-parts partition (pkgs `flakeModules.dev`, docs, skill gates, apps). Consumers never evaluate it.
-- `devenv.yaml` + `devenv.lock` + `devenv.nix`: the dev shell (devenv CLI; the org shell comes from `pkgs/devenv`). There is no flake devShell.
+- `devenv.yaml` + `devenv.lock` + `devenv.nix`: the dev shell (devenv CLI; the org shell comes from external-systems/pkgs as `org-pkgs/devenv`). There is no flake devShell.
 - `documentation/`: the docs site (`docs/`) and slide deck (`slides/`).
 - `skills/<name>/SKILL.md`: this repo's skills, with optional `references/` and `runtime.nix`.
 

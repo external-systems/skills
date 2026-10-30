@@ -1,6 +1,6 @@
 ---
 name: nix-style
-description: "Nix code style, tool loop and the org flake standard (user preferences): attribute nesting/quoting/inherit rules, module-system and repo-root-path conventions, treefmt (alejandra, deadnix, statix, nixf-diagnose, shellcheck, sizelint) via external-systems/pkgs flakeModules, the devenv CLI shell (devenv.yaml importing pkgs/devenv), the dev flake-parts partition holding checks, formatter and MkDocs/reveal.js docs with its own dev/flake.lock, lock sync, the pkgs repo template, and the flake-repo agent contract. Use when writing or editing any .nix file, creating a new flake repo, or adding a formatter, linter, dev shell or docs to one."
+description: "Nix code style, tool loop and the org flake standard (user preferences): attribute nesting/quoting/inherit rules, module-system and repo-root-path conventions, treefmt (alejandra, deadnix, statix, nixf-diagnose, shellcheck, sizelint) via external-systems/pkgs flakeModules, the devenv CLI shell (devenv.yaml importing org-pkgs/devenv), the dev flake-parts partition holding checks, formatter and MkDocs/reveal.js docs with its own dev/flake.lock, lock sync, the pkgs repo template, and the flake-repo agent contract. Use when writing or editing any .nix file, creating a new flake repo, or adding a formatter, linter, dev shell or docs to one."
 ---
 
 # nix-style — Nix code style and tool loop
@@ -58,8 +58,10 @@ before creating a flake repo or touching a repo's partition wiring,
   `inputs.pkgs.flakeModules.dev` (org linters via treefmt,
   `checks.lock-sync`, `apps.sync-locks`, docs and slides as checks).
   Never copy the treefmt program list into a repo.
-- **Dev shell = devenv CLI only**: `devenv.yaml` takes `pkgs`, follows
-  `pkgs/nixpkgs`, and imports `pkgs/devenv` (the org shell: `fmt`,
+- **Dev shell = devenv CLI only**: `devenv.yaml` takes the pkgs flake as
+  `org-pkgs` (never `pkgs`, which would shadow nixpkgs' `pkgs` module
+  argument), follows `org-pkgs/nixpkgs`, and imports `org-pkgs/devenv`
+  (the org shell: `fmt`,
   `check`, `sync-locks`, `docs-build`, `docs`, `slides`; `devenv up`
   serves docs on :8981 and slides on :8982). `devenv.nix` adds the repo's languages, services and
   processes. No flake `devShells`, no `inputs.devenv.flakeModule`.

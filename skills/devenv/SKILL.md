@@ -1,6 +1,6 @@
 ---
 name: devenv
-description: "devenv 2.x dev environments: full CLI reference, devenv.yaml inputs/lock discipline, CLI-native vs flake embedding (and why CLI is the default for dev shells), the org default (CLI-only shell importing pkgs/devenv, lock sync with the flake), the archived borg hybrid pattern, devcontainer.json, monorepo/polyrepo, containers/OCI/K8s, and the Claude Code integration. Load when writing devenv.nix/devenv.yaml/.devcontainer or running devenv commands."
+description: "devenv 2.x dev environments: full CLI reference, devenv.yaml inputs/lock discipline, CLI-native vs flake embedding (and why CLI is the default for dev shells), the org default (CLI-only shell importing org-pkgs/devenv, lock sync with the flake), the archived borg hybrid pattern, devcontainer.json, monorepo/polyrepo, containers/OCI/K8s, and the Claude Code integration. Load when writing devenv.nix/devenv.yaml/.devcontainer or running devenv commands."
 ---
 
 # devenv
@@ -65,14 +65,15 @@ exactly what the borg repo does (see [the worked
 example](#worked-example-borg)).
 
 **Org default (every repo): CLI-native only.** Each repo has
-`devenv.yaml` (input `pkgs = github:external-systems/pkgs`,
-`nixpkgs.follows: pkgs/nixpkgs`, `imports: [pkgs/devenv]` for the org
+`devenv.yaml` (input `org-pkgs = github:external-systems/pkgs`,
+`nixpkgs.follows: org-pkgs/nixpkgs`, `imports: [org-pkgs/devenv]` for the org
 shell) and a root `devenv.nix` for the repo's languages, services and
 processes. There is no flake-mode shell: no `inputs.devenv.flakeModule`,
 no `devShells`. The flake keeps compatibility through
 `checks.lock-sync` (devenv.lock's nixpkgs must equal flake.lock's) and
 the `sync-locks` app/script that re-pins `devenv.yaml` and runs
-`devenv update pkgs`. Templates and procedures: the `nix-style` skill's
+`devenv update org-pkgs`. Never name a devenv input `pkgs`: every
+input becomes a module argument and would shadow nixpkgs' `pkgs`. Templates and procedures: the `nix-style` skill's
 `references/flake-standard.md`; new repos start from
 `nix flake init -t github:external-systems/pkgs`.
 

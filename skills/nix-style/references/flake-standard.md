@@ -18,7 +18,7 @@ snippets explain what the template contains.
 |---|---|
 | `inputs.pkgs.flakeModules.treefmt` | org linters: `formatter`, `checks.treefmt` |
 | `inputs.pkgs.flakeModules.dev` | treefmt, `checks.lock-sync`, `apps.sync-locks`, `documentation`/`slides` as checks and as `legacyPackages` |
-| `pkgs/devenv` (devenv.yaml `imports`) | the org shell: `fmt`, `check`, `sync-locks`, `docs-build`, `docs`, `slides` scripts; `devenv up` serves docs :8981 and slides :8982; `devenv test` gates |
+| `org-pkgs/devenv` (devenv.yaml `imports`) | the org shell: `fmt`, `check`, `sync-locks`, `docs-build`, `docs`, `slides` scripts; `devenv up` serves docs :8981 and slides :8982; `devenv test` gates |
 | `templates.default` | the whole layout below |
 
 The flake modules use the importing repo's own `inputs.treefmt-nix` and
@@ -34,7 +34,7 @@ flake-parts/                consumer-facing modules (import-tree)
 dev/flake.nix / flake.lock  dev partition inputs (never in flake.lock)
 dev/flake-module.nix        the dev partition
 devenv.yaml / devenv.lock   the shell: pkgs input, nixpkgs follows
-                            pkgs/nixpkgs, imports pkgs/devenv
+                            org-pkgs/nixpkgs, imports org-pkgs/devenv
 devenv.nix                  this repo's languages, services, processes
 documentation/              mkdocs.yml, docs/, slides/, module.nix
 AGENTS.md, README.md, .gitignore (result*, .devenv*, devenv.local.nix)
@@ -139,12 +139,12 @@ because clan-core and kubenix follow it).
 
 ```yaml
 inputs:
-  pkgs:
+  org-pkgs:
     url: github:external-systems/pkgs
   nixpkgs:
-    follows: pkgs/nixpkgs
+    follows: org-pkgs/nixpkgs
 imports:
-  - pkgs/devenv
+  - org-pkgs/devenv
 ```
 
 ```nix
@@ -157,6 +157,12 @@ _: {
 ```
 
 Rules:
+
+- Never name a devenv input `pkgs`: devenv passes every `devenv.yaml`
+  input to the devenv modules as a module argument, so it would replace
+  nixpkgs' `pkgs` and fail with "attribute 'bash' missing". The pkgs
+  flake is `org-pkgs` in every `devenv.yaml` (it stays `pkgs` in
+  `flake.nix`).
 
 - `devenv.nix` is a plain devenv module. Flake outputs are not visible
   there; anything it needs from another flake comes in as a `devenv.yaml`
@@ -218,7 +224,7 @@ the same rev. `checks.lock-sync` fails when they drift and prints the
 drifted locks. The fix is always `sync-locks` (devenv script, or
 `nix run .#sync-locks`): it re-locks `dev-nixpkgs` with
 `--override-input`, pins the pkgs rev in `devenv.yaml`, and runs
-`devenv update pkgs`.
+`devenv update org-pkgs`.
 
 Bump flow: `nix flake update pkgs`, then `sync-locks`, in one commit.
 Never run a bare `nix flake update` in `./dev` or a bare `devenv update`
@@ -248,7 +254,7 @@ to move nixpkgs.
    `inputs.devenv.flakeModule`); import `inputs.pkgs.flakeModules.dev`.
 4. Move the shell into `devenv.yaml` + `devenv.nix`: `mkShell` packages
    become devenv `packages`, `shellHook` becomes `enterShell`, helper
-   scripts become `scripts`. Drop what `pkgs/devenv` already provides.
+   scripts become `scripts`. Drop what `org-pkgs/devenv` already provides.
 5. Add `documentation/` (copy the template's, or move existing docs
    there) and import its module from the dev partition.
 6. Lock all three (`nix flake lock ./dev`, `devenv update`), run

@@ -20,7 +20,7 @@
     "flake-parts": {
       "inputs": {
         "nixpkgs-lib": [
-          "pkgs",
+          "org-pkgs",
           "nixpkgs"
         ]
       },
@@ -69,7 +69,7 @@
         "type": "github"
       }
     },
-    "pkgs": {
+    "org-pkgs": {
       "inputs": {
         "flake-parts": "flake-parts",
         "import-tree": "import-tree",
@@ -94,10 +94,10 @@
       "inputs": {
         "devenv": "devenv",
         "nixpkgs": [
-          "pkgs",
+          "org-pkgs",
           "nixpkgs"
         ],
-        "pkgs": "pkgs"
+        "org-pkgs": "org-pkgs"
       }
     }
   },
