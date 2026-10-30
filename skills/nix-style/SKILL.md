@@ -1,6 +1,6 @@
 ---
 name: nix-style
-description: "Nix code style, tool loop and the org flake standard (user preferences): attribute nesting/quoting/inherit rules, module-system and repo-root-path conventions, treefmt (alejandra, deadnix, statix, nixf-diagnose, shellcheck, sizelint) via external-systems/pkgs flakeModules, the dev flake-parts partition holding checks, formatter, devenv shell and MkDocs/reveal.js docs with its own dev/flake.lock, and the flake-repo agent contract. Use when writing or editing any .nix file, creating a new flake repo, or adding a formatter, linter, dev shell or docs to one."
+description: "Nix code style, tool loop and the org flake standard (user preferences): attribute nesting/quoting/inherit rules, module-system and repo-root-path conventions, treefmt (alejandra, deadnix, statix, nixf-diagnose, shellcheck, sizelint) via external-systems/pkgs flakeModules, the devenv CLI shell (devenv.yaml importing pkgs/devenv), the dev flake-parts partition holding checks, formatter and MkDocs/reveal.js docs with its own dev/flake.lock, lock sync, the pkgs repo template, and the flake-repo agent contract. Use when writing or editing any .nix file, creating a new flake repo, or adding a formatter, linter, dev shell or docs to one."
 ---
 
 # nix-style — Nix code style and tool loop
@@ -37,34 +37,38 @@ one. Repo-specific facts live in each repo's `AGENTS.md`.
 
 ## Org flake standard
 
-One shape for every flake repo, new or old. Templates for every file and
-the new-repo and converge procedures are in
-[references/flake-standard.md](references/flake-standard.md); load it
-before creating a flake repo or touching a repo's `flake.nix` partition
-wiring, `dev/`, `devenv/` or `documentation/`.
+One shape for every flake repo, new or old. A developer needs Nix and
+devenv, nothing else. Start new repos with
+`nix flake init -t github:external-systems/pkgs`. Templates for every
+file, the lock-sync rules and the new-repo and converge procedures are
+in [references/flake-standard.md](references/flake-standard.md); load it
+before creating a flake repo or touching a repo's partition wiring,
+`dev/`, `devenv.yaml`/`devenv.nix` or `documentation/`.
 
 - **Inputs**: `pkgs.url = "github:external-systems/pkgs"`, with
   `nixpkgs`, `flake-parts` and `import-tree` following `pkgs/*`. Every
   other input follows them where it can.
-- **Partition**: `partitionedAttrs` sends `apps`, `checks`, `devShells`
-  and `formatter` to `dev`; `packages` too only when no consumer builds
-  the repo's packages. `partitions.dev = {module = ./dev/flake-module.nix;
-  extraInputsFlake = ./dev;}`.
+- **Partition**: `partitionedAttrs` sends `apps`, `checks` and
+  `formatter` to `dev`; `partitions.dev = {module =
+  ./dev/flake-module.nix; extraInputsFlake = ./dev;}`. `packages` stay at
+  the root.
 - **Dev inputs** (`dev/flake.nix`, locked in `dev/flake.lock`):
-  `dev-nixpkgs` (same rev as the root nixpkgs), `treefmt-nix`, `devenv`,
-  `presenting`, and any test-only inputs.
-- **Shared modules from pkgs**: the dev partition imports
-  `inputs.pkgs.flakeModules.dev`, which brings `flakeModules.treefmt`
-  (the org linters, `formatter`, `checks.treefmt`), `flakeModules.devenv`
-  (`devShells.default` from devenv flake mode) and `checks.dev-lock-sync`.
+  `dev-nixpkgs`, `treefmt-nix`, `presenting`, and any test-only inputs.
+- **Shared flake module**: the dev partition imports
+  `inputs.pkgs.flakeModules.dev` (org linters via treefmt,
+  `checks.lock-sync`, `apps.sync-locks`, docs and slides as checks).
   Never copy the treefmt program list into a repo.
-- **Dev shell**: devenv, in flake mode, from `devenv/default.nix`.
-  Maintainer-only commands are devenv `scripts`; consumer-facing ones are
-  root `apps`/`packages`. The devenv CLI (`devenv.yaml`) is opt-in (see
-  the `devenv` skill).
-- **Docs**: `documentation/module.nix` imports
+- **Dev shell = devenv CLI only**: `devenv.yaml` takes `pkgs`, follows
+  `pkgs/nixpkgs`, and imports `pkgs/devenv` (the org shell: `fmt`,
+  `check`, `sync-locks`, `docs`, `slides`; `devenv up` serves docs and
+  slides). `devenv.nix` adds the repo's languages, services and
+  processes. No flake `devShells`, no `inputs.devenv.flakeModule`.
+- **Docs and slides in every repo**: `documentation/module.nix` imports
   `inputs.presenting.flakeModules.default` (the `mkdocs-reveal` skill),
-  imported from the dev partition only.
+  from the dev partition only.
+- **One nixpkgs across three locks**: `flake.lock`, `dev/flake.lock`,
+  `devenv.lock`. After `nix flake update pkgs`, run `sync-locks` in the
+  same commit.
 
 A repo that does not match yet still gets the style rules below; offer to
 converge it rather than doing it unasked.
@@ -284,12 +288,13 @@ parentheses), restructure so both are satisfied.
 
 ## Tool loop (mandatory)
 
-Run this loop before claiming any Nix work is done — in order:
+Run this loop before claiming any Nix work is done — in order (inside
+the devenv shell, `fmt` and `check` are scripts for steps 2 and 3):
 
 ```
 1. git add -A                     # nix only sees tracked files
 2. nix fmt                        # treefmt: format + lint fixes
-3. nix flake check --show-trace   # checks.treefmt + every other check
+3. nix flake check --show-trace   # treefmt, lock-sync, docs, every check
 4. nix build .#<thing-you-touched> -L   # real build, -L = logs
 ```
 
@@ -317,8 +322,8 @@ reporting results. "It should work" is not verification.
 
 ## DevShell and the agent
 
-Flake repos gate tooling and tokens behind their devShell — a devenv
-shell from the dev partition in converged repos. The agent
+Flake repos gate tooling and tokens behind their devShell — the devenv
+CLI shell (`devenv.yaml`) in converged repos. The agent
 process (opencode) is spawned inside `nix develop` 98% of the time —
 the formatter, linters, and repo tooling are already on PATH, and any
 secrets/tokens the repo injects are already exported. When inside, do

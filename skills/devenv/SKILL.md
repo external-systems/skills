@@ -1,6 +1,6 @@
 ---
 name: devenv
-description: "devenv 2.x dev environments: full CLI reference, devenv.yaml inputs/lock discipline, CLI-native vs flake embedding (and why CLI is the default for dev shells), the borg hybrid pattern (one shared module, two lockfiles, drift check), devcontainer.json, monorepo/polyrepo, containers/OCI/K8s, and the Claude Code integration. Load when writing devenv.nix/devenv.yaml/.devcontainer or running devenv commands."
+description: "devenv 2.x dev environments: full CLI reference, devenv.yaml inputs/lock discipline, CLI-native vs flake embedding (and why CLI is the default for dev shells), the org default (CLI-only shell importing pkgs/devenv, lock sync with the flake), the archived borg hybrid pattern, devcontainer.json, monorepo/polyrepo, containers/OCI/K8s, and the Claude Code integration. Load when writing devenv.nix/devenv.yaml/.devcontainer or running devenv commands."
 ---
 
 # devenv
@@ -64,20 +64,20 @@ The two modes can be combined so one shared module feeds both — that is
 exactly what the borg repo does (see [the worked
 example](#worked-example-borg)).
 
-**Org default (flake repos):** flake mode inside the repo's `dev`
-flake-parts partition. The `devenv` input lives in `dev/flake.nix`
-(locked in `dev/flake.lock`, never the main `flake.lock`), the dev
-partition imports `inputs.pkgs.flakeModules.dev` (devenv flakeModule,
-pure-eval `devenv.root` fallback, containers off, treefmt in the shell),
-and the shell itself is `devenv/default.nix`, imported with
-`perSystem.devenv.shells.default.imports = [../devenv];`. Templates: the
-`nix-style` skill's `references/flake-standard.md`.
+**Org default (every repo): CLI-native only.** Each repo has
+`devenv.yaml` (input `pkgs = github:external-systems/pkgs`,
+`nixpkgs.follows: pkgs/nixpkgs`, `imports: [pkgs/devenv]` for the org
+shell) and a root `devenv.nix` for the repo's languages, services and
+processes. There is no flake-mode shell: no `inputs.devenv.flakeModule`,
+no `devShells`. The flake keeps compatibility through
+`checks.lock-sync` (devenv.lock's nixpkgs must equal flake.lock's) and
+the `sync-locks` app/script that re-pins `devenv.yaml` and runs
+`devenv update pkgs`. Templates and procedures: the `nix-style` skill's
+`references/flake-standard.md`; new repos start from
+`nix flake init -t github:external-systems/pkgs`.
 
-The CLI side (`devenv.yaml` + `devenv.lock`, `devenv shell`,
-auto-activation, `devenv mcp`, processes, devcontainer) is an opt-in
-add-on, because it is a third lockfile. Add it when a repo needs those
-features, reusing `devenv/default.nix` as in the borg example, with its
-drift check pointed at `dev/flake.lock`.
+The borg worked example below (hybrid flake + CLI) is historical: borg
+is archived. Do not copy its flake-mode half into new repos.
 
 ## devenv 2.x alert
 
@@ -341,9 +341,8 @@ from one shared module** — the pattern to copy:
 
 1. **Flake-parts mode** (`nix develop`): `flake.nix` pins
    `devenv.url = "github:cachix/devenv?ref=v2.3.1";` and imports
-   `inputs.devenv.flakeModule`. (borg predates the org standard: new
-   repos put this input in `dev/flake.nix` and get the import from
-   `inputs.pkgs.flakeModules.dev`.) `flake-parts/devShells.nix` declares
+   `inputs.devenv.flakeModule`. (Org repos no longer do this: the CLI
+   is the only shell.) `flake-parts/devShells.nix` declares
    the shell and a cacheable package alias:
 
    ```nix

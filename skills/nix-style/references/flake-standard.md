@@ -1,31 +1,43 @@
 # Org flake standard: templates and procedures
 
 Every flake repo under external-systems (and the owner's personal flake
-repos) has the same shape. Consumers lock only what they evaluate:
-formatter, linters, dev shell, docs and test-only inputs sit in a `dev`
-flake-parts partition whose inputs have their own `dev/flake.lock`.
+repos) has the same shape. A developer needs Nix (sandbox on, the default)
+and devenv, nothing else. The devenv CLI is the only dev shell; the flake is
+the build and consumer interface. Consumers lock only what they evaluate:
+formatter, linters, docs and test-only inputs sit in a `dev` flake-parts
+partition whose inputs have their own `dev/flake.lock`. Every repo ships a
+docs site and a slide deck.
 
-The shared pieces come from external-systems/pkgs as flake modules. They
-use the importing repo's own `inputs.treefmt-nix` and `inputs.devenv`, so
-pkgs adds nothing to anyone's main lock.
+The canonical source is `nix flake init -t github:external-systems/pkgs`
+(pkgs `templates/default`). Prefer it over copying the snippets below; the
+snippets explain what the template contains.
 
-| Module | Gives |
+## What pkgs provides
+
+| Piece | Gives |
 |---|---|
 | `inputs.pkgs.flakeModules.treefmt` | org linters: `formatter`, `checks.treefmt` |
-| `inputs.pkgs.flakeModules.devenv` | `devShells.default` from `devenv.shells.default` (pure-eval root fallback, containers off) |
-| `inputs.pkgs.flakeModules.dev` | both, treefmt in the shell, `checks.dev-lock-sync` |
+| `inputs.pkgs.flakeModules.dev` | treefmt, `checks.lock-sync`, `apps.sync-locks`, `documentation`/`slides` as checks |
+| `pkgs/devenv` (devenv.yaml `imports`) | the org shell: `fmt`, `check`, `sync-locks`, `docs`, `slides` scripts; `devenv up` serves docs :8000 and slides :8001; `devenv test` gates |
+| `templates.default` | the whole layout below |
+
+The flake modules use the importing repo's own `inputs.treefmt-nix` and
+`inputs.presenting` (declared in its `dev/flake.nix`), so pkgs adds nothing
+to anyone's main lock. Never copy the treefmt program list or the org shell
+into a repo.
 
 ## Layout
 
 ```
-flake.nix               consumer-facing inputs + partition wiring
-flake.lock
-dev/flake.nix           dev-only inputs (never in flake.lock)
-dev/flake.lock
-dev/flake-module.nix    the dev partition
-devenv/default.nix      the repo's shell (a plain devenv module)
-documentation/          mkdocs.yml, docs/, slides/, module.nix
-flake-parts/            consumer-facing modules (import-tree)
+flake.nix / flake.lock      consumer outputs; inputs follow pkgs
+flake-parts/                consumer-facing modules (import-tree)
+dev/flake.nix / flake.lock  dev partition inputs (never in flake.lock)
+dev/flake-module.nix        the dev partition
+devenv.yaml / devenv.lock   the shell: pkgs input, nixpkgs follows
+                            pkgs/nixpkgs, imports pkgs/devenv
+devenv.nix                  this repo's languages, services, processes
+documentation/              mkdocs.yml, docs/, slides/, module.nix
+AGENTS.md, README.md, .gitignore (result*, .devenv*, devenv.local.nix)
 ```
 
 ## flake.nix
@@ -35,8 +47,6 @@ flake-parts/            consumer-facing modules (import-tree)
   description = "...";
 
   inputs = {
-    # Shared-input authority for the org: consumers that already follow
-    # pkgs lock nothing new.
     pkgs.url = "github:external-systems/pkgs";
     nixpkgs.follows = "pkgs/nixpkgs";
     flake-parts.follows = "pkgs/flake-parts";
@@ -59,9 +69,7 @@ flake-parts/            consumer-facing modules (import-tree)
       partitionedAttrs = {
         apps = "dev";
         checks = "dev";
-        devShells = "dev";
         formatter = "dev";
-        # packages = "dev";  # only when the repo has no consumer-facing packages
       };
 
       partitions.dev = {
@@ -72,29 +80,24 @@ flake-parts/            consumer-facing modules (import-tree)
 }
 ```
 
-`packages` rule: move it to `dev` only when every package is dev-only
-(docs, slides). A repo whose consumers build its packages (pkgs, skills)
-keeps `packages` at the root; its docs then build with
-`nix build .#checks.<system>.documentation` and preview with
-`nix run .#watch-documentation`.
-
-pkgs itself has no `pkgs` input: it owns `nixpkgs`, `flake-parts` and
-`import-tree` directly and imports its modules by path
-(`../flakeModules/dev.nix`).
+- No `devShells` output: the shell is devenv. Never add a flake devShell or
+  `inputs.devenv.flakeModule`.
+- `packages` stays at the root, so consumers never fetch dev inputs. Docs
+  and slides build as `checks.<system>.documentation` / `.slides` (every
+  `nix flake check`) and preview through `devenv up`.
+- pkgs itself has no `pkgs` input: it owns `nixpkgs`, `flake-parts` and
+  `import-tree` directly and imports its modules by path.
 
 ## dev/flake.nix
 
-Input names must not clash with the root flake's, hence the `dev-` prefix.
+Input names must not clash with the root flake's, hence `dev-nixpkgs`.
 Skip `treefmt-nix` here when the root already has it (clanServices does,
 because clan-core and kubenix follow it).
 
 ```nix
 {
-  description = "Development-only inputs for <repo> (the dev partition)";
+  description = "Development-only inputs (the dev partition)";
 
-  # Locked in dev/flake.lock, never in the main flake.lock. dev-nixpkgs
-  # must lock the same rev as the root nixpkgs (checks.dev-lock-sync):
-  #   nix flake lock ./dev --override-input dev-nixpkgs github:NixOS/nixpkgs/<rev>
   inputs = {
     dev-nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
 
@@ -103,11 +106,6 @@ because clan-core and kubenix follow it).
       inputs.nixpkgs.follows = "dev-nixpkgs";
     };
 
-    # nixpkgs NOT followed: devenv's own pin is what devenv.cachix.org
-    # serves.
-    devenv.url = "github:cachix/devenv?ref=v2.4.0";
-
-    # Docs + slides (documentation/module.nix).
     presenting = {
       url = "github:external-systems/presenting";
       inputs.nixpkgs.follows = "dev-nixpkgs";
@@ -123,54 +121,51 @@ because clan-core and kubenix follow it).
 ## dev/flake-module.nix
 
 ```nix
-# Dev partition: formatter, checks, apps, docs and the devenv shell. A
-# consumer of the repo's outputs never evaluates it.
 {inputs, ...}: {
   imports = [
     inputs.pkgs.flakeModules.dev
     ../documentation/module.nix
   ];
-
-  perSystem.devenv.shells.default.imports = [../devenv];
-
   # repo checks and maintainer apps go here (or in modules imported here)
 }
 ```
 
-## devenv/default.nix
+## devenv.yaml and devenv.nix
 
-A plain devenv module. It never references flake `inputs` or `self'`: it
-evaluates inside devenv's module system. treefmt is already in the shell.
+```yaml
+inputs:
+  pkgs:
+    url: github:external-systems/pkgs
+  nixpkgs:
+    follows: pkgs/nixpkgs
+imports:
+  - pkgs/devenv
+```
 
 ```nix
-{pkgs, ...}: {
-  packages = with pkgs; [
-    git
-    jq
-  ];
-
-  # Repo-scoped commands live here, not as flake apps.
-  scripts.update-manifests.exec = ''
-    nix run .#update-manifests
-  '';
+# This repo's additions to the org shell.
+_: {
+  # languages.rust.enable = true;
+  # services.postgres.enable = true;
+  # processes.api.exec = "cargo run";
 }
 ```
 
-Rule of thumb: a command only maintainers run is a devenv `scripts` entry
-or a dev-partition app. A command consumers run is a root `apps` or
-`packages` output.
+Rules:
 
-The devenv CLI side (`devenv.yaml`, `devenv.lock`, `devenv shell`,
-auto-activation, `devenv mcp`, devcontainer) is opt-in: it adds a third
-lockfile. Use it only when the repo needs those features, with a drift
-check against `dev/flake.lock` as in the `devenv` skill's borg example.
+- `devenv.nix` is a plain devenv module. Flake outputs are not visible
+  there; anything it needs from another flake comes in as a `devenv.yaml`
+  input (following `nixpkgs`).
+- Repo-scoped commands are devenv `scripts` (or `tasks`); long-running
+  dev services are `processes`/`services`. Consumer-facing commands are
+  root flake `apps`/`packages`.
+- Never edit the pkgs rev in `devenv.yaml` by hand: `sync-locks` owns it.
+- Activation: `devenv hook <shell>` once per machine in the shell rc, then
+  `devenv allow` once per checkout.
 
 ## documentation/module.nix
 
 ```nix
-# MkDocs site + reveal.js slides.
-# Build: nix build .#documentation / .#slides
-# Preview: nix run .#watch-documentation / .#serve-slides
 {inputs, ...}: {
   imports = [inputs.presenting.flakeModules.default];
 
@@ -188,41 +183,49 @@ check against `dev/flake.lock` as in the `devenv` skill's borg example.
 }
 ```
 
-Details (deck format, embedding, GitHub Pages): the `mkdocs-reveal` skill.
+Deck format, embedding and GitHub Pages: the `mkdocs-reveal` skill.
 
-## Procedure: new flake repo
+## Three lockfiles, one nixpkgs
 
-1. Create the layout above. `git add` every file.
-2. `nix flake lock`, then `nix flake lock ./dev`, then `nix flake check`.
-   The first run fails `dev-lock-sync` and prints the exact
-   `nix flake lock ./dev --override-input dev-nixpkgs ...` command that
-   pins the dev nixpkgs to the root's rev. Run it and check again.
-3. `nix fmt`, `nix flake check`, `nix develop -c true`, `nix build .#documentation`.
-4. Confirm the main lock is clean: `jq '.nodes | keys' flake.lock` lists
+`flake.lock`, `dev/flake.lock` and `devenv.lock` must resolve nixpkgs to
+the same rev. `checks.lock-sync` fails when they drift and prints the
+drifted locks. The fix is always `sync-locks` (devenv script, or
+`nix run .#sync-locks`): it re-locks `dev-nixpkgs` with
+`--override-input`, pins the pkgs rev in `devenv.yaml`, and runs
+`devenv update pkgs`.
+
+Bump flow: `nix flake update pkgs`, then `sync-locks`, in one commit.
+Never run a bare `nix flake update` in `./dev` or a bare `devenv update`
+to move nixpkgs.
+
+## Procedure: new repo
+
+1. `nix flake init -t github:external-systems/pkgs` in an empty
+   directory; replace every `CHANGE ME`.
+2. `git init && git add -A` (Nix only sees tracked files).
+3. `nix flake lock && nix flake lock ./dev && devenv update`, then
+   `nix run .#sync-locks`.
+4. `devenv allow`, then `fmt`, `check`, `devenv test`, `devenv up`.
+5. Confirm the main lock is clean: `jq '.nodes | keys' flake.lock` lists
    no treefmt-nix, devenv, presenting or mkdocs-flake.
 
 ## Procedure: converge an existing repo
 
 1. Root `flake.nix`: inputs follow `pkgs`; add the partitions import,
    `partitionedAttrs` and `partitions.dev`.
-2. Move dev-only inputs (treefmt-nix, devenv, nix2container, mk-shell-bin,
-   mkdocs-flake, presenting, nix-unit, ...) from `flake.nix` to
-   `dev/flake.nix`. Keep one only if a consumer-facing output needs it.
-3. Delete the hand-rolled `checks.lint` and `formatter = pkgs.alejandra`;
-   import `inputs.pkgs.flakeModules.dev` instead.
-4. Move the dev shell into `devenv/default.nix`. A `devShells.default =
-   pkgs.mkShell {...}` becomes devenv `packages`; shellHook becomes
-   `enterShell`.
-5. Move docs wiring into `documentation/module.nix`, imported from the
-   dev partition.
-6. Lock both flakes (step 2 of the new-repo procedure), run `nix fmt`
-   (expect a formatting diff the first time: commit it separately), then
-   `nix flake check`.
+2. Move dev-only inputs (treefmt-nix, devenv, nix2container,
+   mk-shell-bin, mkdocs-flake, presenting, nix-unit, ...) from `flake.nix`
+   to `dev/flake.nix`, or drop them (devenv: the CLI replaces it). Keep
+   one only if a consumer-facing output needs it.
+3. Delete the hand-rolled `checks.lint`, `formatter = pkgs.alejandra`,
+   and every flake devShell (`devShells.default`, `devenv.shells.*`,
+   `inputs.devenv.flakeModule`); import `inputs.pkgs.flakeModules.dev`.
+4. Move the shell into `devenv.yaml` + `devenv.nix`: `mkShell` packages
+   become devenv `packages`, `shellHook` becomes `enterShell`, helper
+   scripts become `scripts`. Drop what `pkgs/devenv` already provides.
+5. Add `documentation/` (copy the template's, or move existing docs
+   there) and import its module from the dev partition.
+6. Lock all three (`nix flake lock ./dev`, `devenv update`), run
+   `sync-locks`, then `fmt` (expect a formatting diff the first time:
+   commit it separately) and `check`.
 7. In the PR body, list which inputs left the main lock.
-
-## Bumping nixpkgs
-
-`nix flake update pkgs` (or `nixpkgs` in pkgs itself), then the
-`nix flake lock ./dev --override-input dev-nixpkgs ...` command that
-`checks.dev-lock-sync` prints, in the same commit. Never run a bare
-`nix flake update` in `./dev`: it moves `dev-nixpkgs` to a different rev.
