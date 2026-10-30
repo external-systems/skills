@@ -3,11 +3,7 @@
 # name. A skill is a directory; files (README, LICENSE) are ignored.
 # Custom skills win name collisions; among externals, earlier entries win.
 # selectSkills drops unknown names silently.
-{lib}: {
-  pkgs,
-  customSkills ? null,
-  externalSkills ? [],
-}: let
+{lib}: let
   skillsIn = dir: select: let
     names = lib.attrNames (lib.filterAttrs (_: type: type == "directory") (builtins.readDir dir));
   in
@@ -24,9 +20,20 @@
     selectSkills ? null,
   }:
     skillsIn "${src}/${skillsDir}" selectSkills;
-in
-  # listToAttrs keeps the first occurrence of a name.
-  pkgs.linkFarm "opencode-skills" (lib.listToAttrs (
-    lib.optionals (customSkills != null) (skillsIn customSkills null)
-    ++ lib.concatMap external externalSkills
-  ))
+
+  # The composed skill set as {name = path;}; listToAttrs keeps the first
+  # occurrence of a name.
+  skillSet = {
+    customSkills ? null,
+    externalSkills ? [],
+  }:
+    lib.listToAttrs (
+      lib.optionals (customSkills != null) (skillsIn customSkills null)
+      ++ lib.concatMap external externalSkills
+    );
+in {
+  inherit skillSet;
+
+  mkSkills = {pkgs, ...} @ args:
+    pkgs.linkFarm "opencode-skills" (skillSet (removeAttrs args ["pkgs"]));
+}

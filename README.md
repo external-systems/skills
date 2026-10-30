@@ -24,41 +24,57 @@ partition, so a consumer reading `lib` or `packages` never evaluates them.
 
 | Output | What it is |
 |---|---|
-| `packages.<system>.hosts` (`default`) | Composed tree: `skills/` + the `hosts` preset (what home-manager installs on NixOS hosts) |
-| `packages.<system>.sandbox` | Composed tree: `skills/` + the `sandbox` preset (baked at `/opt/skills` in the code-agent image) |
+| `packages.<system>.base` (`default`) | `skills/` only: the small shared base every user gets |
+| `packages.<system>.full` | `skills/` + the former fleet-wide host set |
+| `packages.<system>.sandbox` | `skills/` + the set baked at `/opt/skills` in the code-agent image |
+| `packages.<system>.skills-runtime` | Tools and modules the `full` set's scripts call |
 | `lib.customSkills` | Path to this repo's `skills/` |
 | `lib.sources.<name>` | Raw external skill sources (`anthropic`, `cloudflare`, `payloadcms`, `supabase`, `fluxcd`, `terraform`, `google`, `mattpocock`, `openshell`) |
-| `lib.externalSkills.{hosts,sandbox}` | External source presets (`mkSkills` `externalSkills` lists) |
+| `lib.selections.<name>` | Ready-made `externalSkills` lists per source (`anthropic`, `anthropic-all`, `cloudflare`, `payloadcms`, `supabase`, `fluxcd`, `terraform`, `google`, `mattpocock`, `openshell`) |
+| `lib.externalSkills.{base,full,sandbox}` | Presets built from the selections |
 | `lib.mkSkills` | `{pkgs, customSkills ? null, externalSkills ? []}` → linkFarm; drop-in for the AGENTS flake's `lib.mkSkills` |
-| `lib.mkSkillsTree` | `{pkgs, preset ? "hosts", extraSources ? []}` → `skills/` + preset + extra sources |
+| `lib.mkSkillsTree` | `{pkgs, preset ? "base", extraSources ? []}` → `skills/` + preset + extra sources |
+| `lib.mkSkillsRuntime` | Same arguments plus `office ? true` → buildEnv of what that composition's scripts call; `passthru.env.NODE_PATH` |
 | `apps.<system>.package-skills` | `nix run .#package-skills -- OUT_DIR`: one ZIP per skill (validates first) |
-| `checks.<system>.*` | `lint`, `skill-frontmatter`, `hosts`, `sandbox`, `package-skills` |
+| `checks.<system>.*` | `lint`, `skill-frontmatter`, `skills-runtime-coverage`, the preset trees, `skills-runtime`, `package-skills` |
 
 Collision rules: custom skills (`skills/`) always win; among externals,
 earlier entries win. `selectSkills` drops unknown names silently, so
-verify the installed set after changing a preset.
+verify the installed set after changing a selection.
 
-## Consuming from a fleet flake
+## Picking skills per user
+
+Every source lives here as an input; consumers never add `skills-*`
+inputs of their own. Each home-manager user gets the `base` preset and
+picks extras in their profile (the agents module lives in
+external-systems/modules):
 
 ```nix
-# flake.nix
-inputs.skills = {
-  url = "github:external-systems/skills";
-  inputs.pkgs.follows = "pkgs";
-};
-
-# home-manager module
-skillsDir = inputs.skills.lib.mkSkillsTree {
-  inherit pkgs;
-  extraSources = cfg.skills.extraSources; # per-machine extras
-};
-
-# sandbox OCI image
-skillsTree = inputs.skills.lib.mkSkillsTree {
-  inherit pkgs;
-  preset = "sandbox";
-};
+# netsa's profile
+homeSpec.agents.skills.extraSources = with inputs.skills.lib.selections;
+  anthropic ++ fluxcd ++ terraform ++ cloudflare;
 ```
+
+The agents module builds both the tree and the runtime from the same
+composition, so each user's tools follow their skills:
+
+```nix
+skillsDir = inputs.skills.lib.mkSkillsTree {inherit pkgs; inherit (cfg.skills) preset extraSources;};
+runtime = inputs.skills.lib.mkSkillsRuntime {inherit pkgs; inherit (cfg.skills) preset extraSources;};
+home.packages = [runtime];
+home.sessionVariables = runtime.env;
+```
+
+## Skill runtime
+
+`runtime/default.nix` maps each script-shipping skill to what its scripts
+call (`packages`, `python`, `node`, `office`); custom skills can ship
+`skills/<name>/runtime.nix` instead. `mkSkillsRuntime` merges the entries
+of the skills actually composed into one low-priority buildEnv (python3
+env, nodejs with the `runtime/npm` modules on `NODE_PATH`, LibreOffice
+unless `office = false`, which saves roughly 2.5 GiB).
+`checks.skills-runtime-coverage` fails when a skill in the `full` tree
+ships scripts with no entry (`{}` marks one that needs nothing).
 
 ## Skill convention
 
@@ -105,7 +121,8 @@ clear first paragraph and skim-friendly sections.
 2. Optional: supporting files (or a `references/` subdir) inside the
    skill dir for progressive disclosure.
 3. `git add` it. That is the whole wiring: `mkSkillsTree` merges the
-   entire `skills/` tree into both presets. Consumers pick it up on their
+   entire `skills/` tree into every preset. If the skill ships scripts,
+   add a `runtime.nix` (or a `runtime/default.nix` entry). Consumers pick it up on their
    next `nix flake update skills` and deploy.
 
 ## Adding skills from an external source
@@ -113,10 +130,11 @@ clear first paragraph and skim-friendly sections.
 1. Add the source repo as a flake input in `flake.nix` (usually
    `flake = false`, named `skills-<name>`) and expose it in
    `lib.sources` (`flake-module.nix`).
-2. Add an entry to `externalSkills.hosts` and/or `externalSkills.sandbox`.
-   Each entry is `{src = ...;}` with optional `skillsDir` (default
-   `"skills"`) and `selectSkills` (cherry-pick by name).
-3. Per-machine sources stay on the consumer side (`extraSources`).
+2. Add a `selections.<name>` list. Each entry is `{src = ...;}` with
+   optional `skillsDir` (default `"skills"`) and `selectSkills`
+   (cherry-pick by name). Use it in a preset if it should be shared.
+3. Add `runtime/default.nix` entries for any of its skills that ship
+   scripts.
 
 ## House rules
 

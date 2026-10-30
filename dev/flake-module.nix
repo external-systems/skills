@@ -5,7 +5,12 @@
   self,
   ...
 }: {
-  perSystem = {pkgs, ...}: let
+  perSystem = {
+    pkgs,
+    self',
+    ...
+  }: let
+    inherit (self') packages;
     tools = with pkgs; [alejandra statix deadnix];
     python = pkgs.python3.withPackages (ps: [ps.pyyaml]);
     checkSkillMetadata = "${self}/lib/check-skill-metadata.py";
@@ -76,7 +81,28 @@
 
       # Both presets compose: every external source resolves and
       # mkSkills builds the linkFarm.
-      inherit (self.packages.${pkgs.stdenv.hostPlatform.system}) hosts sandbox;
+      inherit (packages) base full sandbox skills-runtime;
+
+      # Runtime coverage: every skill in the full tree that ships a
+      # script needs a runtime/default.nix (or skills/<name>/runtime.nix)
+      # entry, so a new skill can't land without its tools and agents
+      # fall back to installing them mid-session.
+      skills-runtime-coverage =
+        pkgs.runCommand "skills-runtime-coverage" {
+          covered = pkgs.writeText "covered" (lib.concatLines packages.skills-runtime.covered);
+        } ''
+          status=0
+          for skill in ${packages.full}/*; do
+            name=$(basename "$skill")
+            if [ -n "$(find -L "$skill" -type f \( -name '*.py' -o -name '*.sh' -o -name '*.js' -o -name '*.mjs' -o -name '*.ts' \) -print -quit)" ] \
+              && ! grep -qxF "$name" "$covered"; then
+              echo "FAIL: skill '$name' ships scripts but has no runtime entry (runtime/default.nix; {} if it needs nothing)" >&2
+              status=1
+            fi
+          done
+          if [ "$status" -ne 0 ]; then exit 1; fi
+          touch $out
+        '';
 
       package-skills = pkgs.runCommand "package-skills" {} ''
         ${lib.getExe package-skills} "$TMPDIR/out"

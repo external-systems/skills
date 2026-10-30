@@ -18,79 +18,101 @@
     openshell = inputs.skills-openshell;
   };
 
-  # google/skills nests skills/<category>/<name>: one entry per category
-  # with skillsDir at the category dir (leaf names unique across them).
-  googleCategories = map (category: {
-    src = sources.google;
-    skillsDir = "skills/${category}";
-  }) ["ads" "analytics" "cloud" "developers" "identity"];
-
-  anthropic = {
-    src = sources.anthropic;
-    selectSkills = ["doc-coauthoring" "docx" "internal-comms" "mcp-builder" "skill-creator" "xlsx"];
+  # Per-source selections: ready-made externalSkills lists a user's
+  # profile concatenates onto a preset, e.g.
+  #   extraSources = with inputs.skills.lib.selections; fluxcd ++ terraform;
+  selections = {
+    # Anthropic official skills, cherry-picked (anthropic-all: every one).
+    anthropic = [
+      {
+        src = sources.anthropic;
+        selectSkills = ["doc-coauthoring" "docx" "internal-comms" "mcp-builder" "skill-creator" "xlsx"];
+      }
+    ];
+    anthropic-all = [{src = sources.anthropic;}];
+    cloudflare = [{src = sources.cloudflare;}];
+    payloadcms = [{src = sources.payloadcms;}];
+    supabase = [{src = sources.supabase;}];
+    fluxcd = [{src = sources.fluxcd;}];
+    terraform = [{src = sources.terraform;}];
+    # google/skills and mattpocock/skills nest skills/<category>/<name>:
+    # one entry per category (leaf names are unique across categories).
+    google = map (category: {
+      src = sources.google;
+      skillsDir = "skills/${category}";
+    }) ["ads" "analytics" "cloud" "developers" "identity"];
+    mattpocock = map (category: {
+      src = sources.mattpocock;
+      skillsDir = "skills/${category}";
+    }) ["engineering" "productivity"];
+    # OpenShell ships skills/ and the contributor-facing .agents/skills/.
+    openshell = [
+      {src = sources.openshell;}
+      {
+        src = sources.openshell;
+        skillsDir = ".agents/skills";
+      }
+    ];
   };
 
   # External skill presets (mkSkills externalSkills lists). Among
   # externals, earlier entries win name collisions; custom skills
   # (skills/) always win. selectSkills drops unknown names silently, so
   # verify the installed set after changing a preset.
-  externalSkills = {
-    # Fleet-wide set home-manager installs for agents on NixOS hosts.
-    hosts =
-      [
-        anthropic
-        {src = sources.payloadcms;}
-        {src = sources.fluxcd;}
-        {src = sources.terraform;}
-      ]
-      ++ map (category: {
-        src = sources.mattpocock;
-        skillsDir = "skills/${category}";
-      }) ["engineering" "productivity"];
-
+  externalSkills = with selections; {
+    # Shared base every home-manager user gets: this repo's skills only.
+    # Users add their own picks with extraSources.
+    base = [];
+    # The former fleet-wide host set, for users who want all of it.
+    full = anthropic ++ payloadcms ++ fluxcd ++ terraform ++ mattpocock;
     # Set baked read-only at /opt/skills in the code-agent sandbox image.
-    sandbox =
-      [
-        anthropic
-        {src = sources.cloudflare;}
-        {src = sources.payloadcms;}
-        {src = sources.supabase;}
-        {src = sources.fluxcd;}
-        {src = sources.terraform;}
-      ]
-      ++ googleCategories
-      ++ [
-        {src = sources.openshell;}
-        {
-          src = sources.openshell;
-          skillsDir = ".agents/skills";
-        }
-      ];
+    sandbox = anthropic ++ cloudflare ++ payloadcms ++ supabase ++ fluxcd ++ terraform ++ google ++ openshell;
   };
 
-  mkSkills = import ./lib/mk-skills.nix {inherit lib;};
+  inherit (import ./lib/mk-skills.nix {inherit lib;}) skillSet mkSkills;
+  runtimeFor = import ./lib/mk-skills-runtime.nix {inherit lib;};
 
-  # Composed skills dir: this repo's skills/ plus a preset (default:
-  # hosts) plus any extra sources appended after it.
-  mkSkillsTree = {
-    pkgs,
-    preset ? "hosts",
+  # this repo's skills/ plus a preset (default: base) plus any extra
+  # sources appended after it.
+  composition = {
+    preset ? "base",
     extraSources ? [],
-  }:
-    mkSkills {
-      inherit pkgs;
-      inherit (self.lib) customSkills;
-      externalSkills = externalSkills.${preset} ++ extraSources;
+  }: {
+    inherit (self.lib) customSkills;
+    externalSkills = externalSkills.${preset} ++ extraSources;
+  };
+
+  # Composed skills dir.
+  mkSkillsTree = {pkgs, ...} @ args:
+    mkSkills ({inherit pkgs;} // composition (removeAttrs args ["pkgs"]));
+
+  # Everything the scripts of that same composition call (see
+  # runtime/default.nix); pass the same preset/extraSources as the tree.
+  mkSkillsRuntime = {
+    pkgs,
+    office ? true,
+    ...
+  } @ args:
+    runtimeFor {
+      inherit pkgs office;
+      skills = skillSet (composition (removeAttrs args ["pkgs" "office"]));
     };
 in {
   flake.lib = {
     customSkills = ./skills;
-    inherit sources externalSkills mkSkills mkSkillsTree;
+    inherit sources selections externalSkills skillSet mkSkills mkSkillsTree mkSkillsRuntime;
   };
 
   perSystem = {pkgs, ...}: {
     packages =
-      lib.genAttrs ["hosts" "sandbox"] (preset: mkSkillsTree {inherit pkgs preset;})
-      // {default = mkSkillsTree {inherit pkgs;};};
+      lib.genAttrs (lib.attrNames externalSkills) (preset: mkSkillsTree {inherit pkgs preset;})
+      // {
+        default = mkSkillsTree {inherit pkgs;};
+        # Covers the full preset, so every selection it uses has its tools.
+        skills-runtime = mkSkillsRuntime {
+          inherit pkgs;
+          preset = "full";
+        };
+      };
   };
 }

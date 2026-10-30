@@ -1,0 +1,9 @@
+{
+  "name": "skills-runtime-node",
+  "version": "0.0.0",
+  "private": true,
+  "description": "npm modules skill scripts require(), on NODE_PATH via packages.skills-runtime",
+  "dependencies": {
+    "docx": "^9.5.1"
+  }
+}
