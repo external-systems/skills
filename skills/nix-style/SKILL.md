@@ -60,12 +60,14 @@ before creating a flake repo or touching a repo's partition wiring,
   Never copy the treefmt program list into a repo.
 - **Dev shell = devenv CLI only**: `devenv.yaml` takes `pkgs`, follows
   `pkgs/nixpkgs`, and imports `pkgs/devenv` (the org shell: `fmt`,
-  `check`, `sync-locks`, `docs`, `slides`; `devenv up` serves docs and
-  slides). `devenv.nix` adds the repo's languages, services and
+  `check`, `sync-locks`, `docs-build`, `docs`, `slides`; `devenv up`
+  serves docs on :8981 and slides on :8982). `devenv.nix` adds the repo's languages, services and
   processes. No flake `devShells`, no `inputs.devenv.flakeModule`.
 - **Docs and slides in every repo**: `documentation/module.nix` imports
   `inputs.presenting.flakeModules.default` (the `mkdocs-reveal` skill),
-  from the dev partition only.
+  from the dev partition only. `nix build .#documentation` builds the
+  static site (via `legacyPackages`, partitioned to `dev`); open
+  `result/index.html` from disk.
 - **One nixpkgs across three locks**: `flake.lock`, `dev/flake.lock`,
   `devenv.lock`. After `nix flake update pkgs`, run `sync-locks` in the
   same commit.

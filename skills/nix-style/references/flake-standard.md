@@ -17,8 +17,8 @@ snippets explain what the template contains.
 | Piece | Gives |
 |---|---|
 | `inputs.pkgs.flakeModules.treefmt` | org linters: `formatter`, `checks.treefmt` |
-| `inputs.pkgs.flakeModules.dev` | treefmt, `checks.lock-sync`, `apps.sync-locks`, `documentation`/`slides` as checks |
-| `pkgs/devenv` (devenv.yaml `imports`) | the org shell: `fmt`, `check`, `sync-locks`, `docs`, `slides` scripts; `devenv up` serves docs :8000 and slides :8001; `devenv test` gates |
+| `inputs.pkgs.flakeModules.dev` | treefmt, `checks.lock-sync`, `apps.sync-locks`, `documentation`/`slides` as checks and as `legacyPackages` |
+| `pkgs/devenv` (devenv.yaml `imports`) | the org shell: `fmt`, `check`, `sync-locks`, `docs-build`, `docs`, `slides` scripts; `devenv up` serves docs :8981 and slides :8982; `devenv test` gates |
 | `templates.default` | the whole layout below |
 
 The flake modules use the importing repo's own `inputs.treefmt-nix` and
@@ -70,6 +70,7 @@ AGENTS.md, README.md, .gitignore (result*, .devenv*, devenv.local.nix)
         apps = "dev";
         checks = "dev";
         formatter = "dev";
+        legacyPackages = "dev"; # docs: nix build .#documentation
       };
 
       partitions.dev = {
@@ -82,9 +83,13 @@ AGENTS.md, README.md, .gitignore (result*, .devenv*, devenv.local.nix)
 
 - No `devShells` output: the shell is devenv. Never add a flake devShell or
   `inputs.devenv.flakeModule`.
-- `packages` stays at the root, so consumers never fetch dev inputs. Docs
-  and slides build as `checks.<system>.documentation` / `.slides` (every
-  `nix flake check`) and preview through `devenv up`.
+- `packages` stays at the root, so consumers never fetch dev inputs.
+  `flakeModules.dev` exposes docs and slides as `legacyPackages`
+  (partitioned to `dev`), so `nix build .#documentation` and
+  `nix build .#slides` still work, and as checks, so every
+  `nix flake check` builds them. A repo whose consumers use its
+  `legacyPackages` leaves that attr at the root and builds
+  `.#checks.<system>.documentation` instead.
 - pkgs itself has no `pkgs` input: it owns `nixpkgs`, `flake-parts` and
   `import-tree` directly and imports its modules by path.
 
@@ -183,6 +188,27 @@ Rules:
 }
 ```
 
+`documentation/mkdocs.yml` carries three org settings (the template has
+them):
+
+```yaml
+dev_addr: 127.0.0.1:8981      # live preview; 8000/8001 belong to apps
+use_directory_urls: false     # links work from file://
+plugins:
+  - search
+  - offline                   # Material: search works from file://
+```
+
+The deck iframe on a docs page uses a relative path
+(`src="slides/index.html"` from the site root) so it also loads from
+`file://`.
+
+Preferred docs loop: `docs-build` (or `nix build .#documentation`), then
+open `result-docs/index.html` (or `result/index.html`) straight from
+disk, for example `firefox result/index.html`. No server process runs.
+`devenv up` (live reload on :8981, slides on :8982) is for heavy editing
+sessions.
+
 Deck format, embedding and GitHub Pages: the `mkdocs-reveal` skill.
 
 ## Three lockfiles, one nixpkgs
@@ -205,7 +231,7 @@ to move nixpkgs.
 2. `git init && git add -A` (Nix only sees tracked files).
 3. `nix flake lock && nix flake lock ./dev && devenv update`, then
    `nix run .#sync-locks`.
-4. `devenv allow`, then `fmt`, `check`, `devenv test`, `devenv up`.
+4. `devenv allow`, then `fmt`, `check`, `devenv test`, `docs-build`.
 5. Confirm the main lock is clean: `jq '.nodes | keys' flake.lock` lists
    no treefmt-nix, devenv, presenting or mkdocs-flake.
 

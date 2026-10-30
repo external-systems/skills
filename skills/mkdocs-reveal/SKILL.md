@@ -30,8 +30,8 @@ Three edits. Full annotated versions of every snippet are in
 **1. Add the input** (in an org flake repo: `dev/flake.nix`, following
 `dev-nixpkgs`, so docs never reach the main `flake.lock`; the module in
 step 2 then lives in `documentation/module.nix`, imported from the dev
-partition, and docs build as `checks.<system>.documentation` and preview
-with `devenv up`. See the `nix-style` skill's org flake standard.
+partition; `nix build .#documentation` still works through
+`legacyPackages`, and live previews use ports 8981/8982. See the `nix-style` skill's org flake standard.
 Otherwise flake.nix):
 
 ```nix
