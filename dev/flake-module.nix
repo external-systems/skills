@@ -1,6 +1,6 @@
 # Dev partition: the org base (treefmt, lock-sync, docs) from pkgs, the
-# skill metadata gates and the package-skills app. A consumer of lib or
-# packages never evaluates it.
+# skill metadata gates and the package-skills and skills-drift apps. A
+# consumer of lib or packages never evaluates it.
 {
   inputs,
   lib,
@@ -20,10 +20,12 @@
     inherit (self') packages;
     python = pkgs.python3.withPackages (ps: [ps.pyyaml]);
     checkSkillMetadata = "${self}/lib/check-skill-metadata.py";
+    skillManifest = "${self}/lib/skill-manifest.py";
+    rev = self.shortRev or self.dirtyShortRev or "unknown";
 
     package-skills = pkgs.writeShellApplication {
       name = "package-skills";
-      runtimeInputs = [pkgs.coreutils pkgs.zip python];
+      runtimeInputs = [pkgs.coreutils python];
       text = ''
         if [ "$#" -ne 1 ]; then
           echo "Usage: package-skills OUTPUT_DIR" >&2
@@ -39,22 +41,33 @@
         skills=${self.lib.customSkills}
         python3 ${checkSkillMetadata} "$skills"
         mkdir -p -- "$output"
+        python3 -I ${skillManifest} package "$skills" "$output" ${rev}
 
-        for skill_dir in "$skills"/*; do
-          if [ -d "$skill_dir" ] && [ -f "$skill_dir/SKILL.md" ]; then
-            skill=$(basename "$skill_dir")
-            (cd "$skills" && zip -q -r "$output/$skill.zip" "$skill")
-          fi
-        done
+        printf 'Created skill archives and manifest.json in %s\n' "$output"
+      '';
+    };
 
-        printf 'Created skill archives in %s\n' "$output"
+    # Repo vs claude.ai account: compares this flake's skills with a cloud
+    # session's synced copy of the account (or --synced DIR) and lists the
+    # ones to re-upload from package-skills.
+    skills-drift = pkgs.writeShellApplication {
+      name = "skills-drift";
+      runtimeInputs = [python];
+      text = ''
+        python3 -I ${skillManifest} drift ${self.lib.customSkills} "$@"
       '';
     };
   in {
     apps.package-skills = {
       type = "app";
       program = lib.getExe package-skills;
-      meta.description = "Package each skill directory into its own ZIP archive";
+      meta.description = "Package each skill into a claude.ai-uploadable ZIP plus manifest.json";
+    };
+
+    apps.skills-drift = {
+      type = "app";
+      program = lib.getExe skills-drift;
+      meta.description = "List repo skills missing or stale on the claude.ai account";
     };
 
     checks = {
@@ -115,9 +128,19 @@
           touch $out
         '';
 
-      package-skills = pkgs.runCommand "package-skills" {} ''
+      # Packaged zips stay valid skills and read back as in sync, both
+      # stamped (unzipped archives) and unstamped (the raw tree).
+      package-skills = pkgs.runCommand "package-skills" {nativeBuildInputs = [pkgs.unzip python];} ''
         ${lib.getExe package-skills} "$TMPDIR/out"
         test -f "$TMPDIR/out/nix-style.zip"
+        test -f "$TMPDIR/out/manifest.json"
+        mkdir "$TMPDIR/unpacked"
+        for archive in "$TMPDIR"/out/*.zip; do
+          unzip -q -d "$TMPDIR/unpacked" "$archive"
+        done
+        python3 ${checkSkillMetadata} "$TMPDIR/unpacked"
+        ${lib.getExe skills-drift} --synced "$TMPDIR/unpacked"
+        ${lib.getExe skills-drift} --synced ${self.lib.customSkills}
         touch $out
       '';
     };

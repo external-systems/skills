@@ -54,7 +54,8 @@ devenv up        # live docs :8981 and slides :8982
 | `lib.mkSkills` | `{pkgs, customSkills ? null, externalSkills ? []}` → linkFarm; drop-in for the AGENTS flake's `lib.mkSkills` |
 | `lib.mkSkillsTree` | `{pkgs, preset ? "base", extraSources ? []}` → preset + extra sources |
 | `lib.mkSkillsRuntime` | Same arguments plus `office ? true` → buildEnv of what that composition's scripts call; `passthru.env.NODE_PATH` |
-| `apps.<system>.package-skills` | `nix run .#package-skills -- OUT_DIR`: one ZIP per skill (validates first) |
+| `apps.<system>.package-skills` | `nix run .#package-skills -- OUT_DIR`: one claude.ai-uploadable ZIP per skill plus `manifest.json` (validates first) |
+| `apps.<system>.skills-drift` | `nix run .#skills-drift`: lists repo skills missing or stale on the claude.ai account (`--skip NAME`, `--synced DIR`) |
 | `checks.<system>.*` | `treefmt`, `lock-sync`, `documentation`, `slides`, `skill-frontmatter`, `own-skills-grouped`, `skills-runtime-coverage`, the preset trees, `skills-runtime`, `package-skills` |
 
 Collision rules: custom skills (`skills/`) always win; among externals,
