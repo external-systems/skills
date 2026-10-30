@@ -1,17 +1,23 @@
-# Dev partition: lint, the skill metadata gate, formatter, devShell and
-# the package-skills app. A consumer of lib or packages never evaluates it.
+# Dev partition: the org base (treefmt, lock-sync, docs) from pkgs, the
+# skill metadata gates and the package-skills app. A consumer of lib or
+# packages never evaluates it.
 {
+  inputs,
   lib,
   self,
   ...
 }: {
+  imports = [
+    inputs.org-pkgs.flakeModules.dev
+    ../documentation/module.nix
+  ];
+
   perSystem = {
     pkgs,
     self',
     ...
   }: let
     inherit (self') packages;
-    tools = with pkgs; [alejandra statix deadnix];
     python = pkgs.python3.withPackages (ps: [ps.pyyaml]);
     checkSkillMetadata = "${self}/lib/check-skill-metadata.py";
 
@@ -45,10 +51,6 @@
       '';
     };
   in {
-    formatter = pkgs.alejandra;
-
-    devShells.default = pkgs.mkShellNoCC {packages = tools ++ [python];};
-
     apps.package-skills = {
       type = "app";
       program = lib.getExe package-skills;
@@ -56,16 +58,7 @@
     };
 
     checks = {
-      # Lint gate: alejandra (format), statix (anti-patterns), deadnix
-      # (dead bindings). Source filtered to .nix files so skill edits
-      # don't invalidate it.
-      lint = pkgs.runCommand "lint" {nativeBuildInputs = tools;} ''
-        cd ${lib.sources.sourceFilesBySuffices self [".nix"]}
-        alejandra --check --quiet .
-        statix check .
-        deadnix --fail .
-        touch $out
-      '';
+      # Formatting and lint: checks.treefmt (pkgs flakeModules.treefmt).
 
       # Skill frontmatter gate: pi and kimi-code parse SKILL.md frontmatter
       # with JS YAML libraries that reject ': ' (colon+space) inside an

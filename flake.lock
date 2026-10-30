@@ -3,7 +3,7 @@
     "flake-parts": {
       "inputs": {
         "nixpkgs-lib": [
-          "pkgs",
+          "org-pkgs",
           "nixpkgs"
         ]
       },
@@ -52,18 +52,18 @@
         "type": "github"
       }
     },
-    "pkgs": {
+    "org-pkgs": {
       "inputs": {
         "flake-parts": "flake-parts",
         "import-tree": "import-tree",
         "nixpkgs": "nixpkgs"
       },
       "locked": {
-        "lastModified": 1793201675,
-        "narHash": "sha256-RnqS6DXV6uz9AJcRv8SEAJcSJamiuwgp1yvH+jNn2Z8=",
+        "lastModified": 1793401949,
+        "narHash": "sha256-Qy2v/b1PQVgpSLOt5svrh4obd+w01eGied8ynp1l1TU=",
         "owner": "external-systems",
         "repo": "pkgs",
-        "rev": "9d3976c938b15d68aa3df625519459a3cafcaf59",
+        "rev": "c79334c26393e0dceb5277202cb6f21e51f79b93",
         "type": "github"
       },
       "original": {
@@ -75,14 +75,14 @@
     "root": {
       "inputs": {
         "flake-parts": [
-          "pkgs",
+          "org-pkgs",
           "flake-parts"
         ],
         "nixpkgs": [
-          "pkgs",
+          "org-pkgs",
           "nixpkgs"
         ],
-        "pkgs": "pkgs",
+        "org-pkgs": "org-pkgs",
         "skills-anthropic": "skills-anthropic",
         "skills-cloudflare": "skills-cloudflare",
         "skills-fluxcd": "skills-fluxcd",

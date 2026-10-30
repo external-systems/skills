@@ -1,6 +1,6 @@
 ---
 name: nix-style
-description: "Nix code style + tool loop (user preferences): attribute nesting/quoting/inherit rules, module-system and repo-root-path conventions, the mandatory alejandra/statix/deadnix tool loop, devShell awareness, and the flake-repo agent contract. Use when writing or editing any .nix file."
+description: "Nix code style, tool loop and the org flake standard (user preferences): attribute nesting/quoting/inherit rules, module-system and repo-root-path conventions, treefmt (alejandra, deadnix, statix, nixf-diagnose, shellcheck, sizelint) via external-systems/pkgs flakeModules, the devenv CLI shell (devenv.yaml importing org-pkgs/devenv), the dev flake-parts partition holding checks, formatter and MkDocs/reveal.js docs with its own dev/flake.lock, lock sync, the pkgs repo template, and the flake-repo agent contract. Use when writing or editing any .nix file, creating a new flake repo, or adding a formatter, linter, dev shell or docs to one."
 ---
 
 # nix-style — Nix code style and tool loop
@@ -24,11 +24,60 @@ one. Repo-specific facts live in each repo's `AGENTS.md`.
   come from a provisioning layer (sops-nix, clan vars, CI OIDC, GitHub
   Actions secrets), never from expressions — clan vars are documented in
   the `clan-core` skill.
+- Every flake repo follows the org flake standard: inputs follow
+  external-systems/pkgs, and checks, formatter, devShells and apps live
+  in a `dev` flake-parts partition with its own `dev/flake.nix` and
+  `dev/flake.lock`, so treefmt-nix, devenv and docs inputs never reach
+  the main `flake.lock`. See [Org flake standard](#org-flake-standard).
 - Never reach for `--impure`, `--no-sandbox`, `sandbox = false`, or
   `builtins.readFile /etc/...` to make something build. Impurity hides
   bugs, breaks FlakeHub Cache reproducibility, and fails on CI. If
   something needs the outside world, make it an input (a flake input, a
   store path, a test fixture) instead.
+
+## Org flake standard
+
+One shape for every flake repo, new or old. A developer needs Nix and
+devenv, nothing else. Start new repos with
+`nix flake init -t github:external-systems/pkgs`. Templates for every
+file, the lock-sync rules and the new-repo and converge procedures are
+in [references/flake-standard.md](references/flake-standard.md); load it
+before creating a flake repo or touching a repo's partition wiring,
+`dev/`, `devenv.yaml`/`devenv.nix` or `documentation/`.
+
+- **Inputs**: `org-pkgs.url = "github:external-systems/pkgs"`, with
+  `nixpkgs`, `flake-parts` and `import-tree` following `org-pkgs/*`.
+  The input is never named `pkgs` (in `flake.nix` or `devenv.yaml`):
+  `pkgs` always means the nixpkgs package set. Every
+  other input follows them where it can.
+- **Partition**: `partitionedAttrs` sends `apps`, `checks` and
+  `formatter` to `dev`; `partitions.dev = {module =
+  ./dev/flake-module.nix; extraInputsFlake = ./dev;}`. `packages` stay at
+  the root.
+- **Dev inputs** (`dev/flake.nix`, locked in `dev/flake.lock`):
+  `dev-nixpkgs`, `treefmt-nix`, `presenting`, and any test-only inputs.
+- **Shared flake module**: the dev partition imports
+  `inputs.org-pkgs.flakeModules.dev` (org linters via treefmt,
+  `checks.lock-sync`, `apps.sync-locks`, docs and slides as checks).
+  Never copy the treefmt program list into a repo.
+- **Dev shell = devenv CLI only**: `devenv.yaml` takes `org-pkgs`
+  (devenv would let an input named `pkgs` shadow nixpkgs' `pkgs`),
+  follows `org-pkgs/nixpkgs`, and imports `org-pkgs/devenv`
+  (the org shell: `fmt`,
+  `check`, `sync-locks`, `docs-build`, `docs`, `slides`; `devenv up`
+  serves docs on :8981 and slides on :8982). `devenv.nix` adds the repo's languages, services and
+  processes. No flake `devShells`, no `inputs.devenv.flakeModule`.
+- **Docs and slides in every repo**: `documentation/module.nix` imports
+  `inputs.presenting.flakeModules.default` (the `mkdocs-reveal` skill),
+  from the dev partition only. `nix build .#documentation` builds the
+  static site (via `legacyPackages`, partitioned to `dev`); open
+  `result/index.html` from disk.
+- **One nixpkgs across three locks**: `flake.lock`, `dev/flake.lock`,
+  `devenv.lock`. After `nix flake update org-pkgs`, run `sync-locks` in the
+  same commit.
+
+A repo that does not match yet still gets the style rules below; offer to
+converge it rather than doing it unasked.
 
 ## Style guide
 
@@ -201,29 +250,33 @@ eval channel, so the helper is always safe there.
 
 ### Formatting
 
-alejandra is the formatter. It owns the layout: never hand-format Nix,
-never fight its choices, never merge conflict over whitespace. After
-every edit:
+treefmt is the formatter (`nix fmt`, from `flakeModules.treefmt`). It
+runs alejandra (layout), deadnix (`no-lambda-pattern-names`), statix,
+nixf-diagnose, shellcheck and sizelint in one pass. alejandra owns the
+layout: never hand-format Nix, never fight its choices, never merge
+conflict over whitespace. After every edit:
 
 ```
-nix fmt .              # write
-nix fmt -- --check .   # verify without writing
+nix fmt                       # format + autofix the whole tree
+nix flake check               # checks.treefmt fails on any diff
 ```
 
-If `nix fmt` fails with no path or with empty stdin, pass an explicit
-path (`nix fmt .`) — a bare `nix fmt` that forwards no args makes
-alejandra read empty stdin and exit 1, non-mutating.
+With treefmt, a bare `nix fmt` formats the tree. In a repo not yet
+converged (`formatter = pkgs.alejandra`), pass a path: `nix fmt .` — a
+bare `nix fmt` there makes alejandra read empty stdin and exit 1.
 
 ### Enforcement
 
-What CI automates (`checks.lint`, built by `nix flake check`):
+What CI automates (`checks.treefmt`, built by `nix flake check`):
 
 | Tool | Catches |
 |---|---|
 | alejandra | formatting |
-| statix `repeated_keys` | same key assigned 3+ times, adjacent |
-| statix `manual_inherit*` | assignments that should be `inherit` |
-| deadnix | unused bindings and arguments |
+| deadnix | unused bindings (lambda pattern names are tolerated) |
+| statix | anti-patterns, incl. `repeated_keys` (3+ adjacent) and `manual_inherit*` |
+| nixf-diagnose | removed `builtins` primop prefixes |
+| shellcheck | shell scripts |
+| sizelint | oversized files |
 
 What is convention the agent must enforce itself (CI cannot see it):
 
@@ -232,6 +285,7 @@ What is convention the agent must enforce itself (CI cannot see it):
 - inherit consolidation
 - `relativeToRoot` for repo-root paths
 - `enabled` preference
+- the org flake standard (no dev-only input in the main lock)
 
 Fix violations in passing whenever you touch a file; write new code right
 the first time. When a rule and a linter disagree, the rule wins — and if
@@ -240,14 +294,14 @@ parentheses), restructure so both are satisfied.
 
 ## Tool loop (mandatory)
 
-Run this loop before claiming any Nix work is done — in order:
+Run this loop before claiming any Nix work is done — in order (inside
+the devenv shell, `fmt` and `check` are scripts for steps 2 and 3):
 
 ```
-1. nix fmt .                      # format
-2. statix check .                 # lint (anti-patterns)
-3. deadnix --fail .               # dead code; --fail exits 1 on findings
-4. nix flake check --show-trace   # eval every output
-5. nix build .#<thing-you-touched> -L   # real build, -L = logs
+1. git add -A                     # nix only sees tracked files
+2. nix fmt                        # treefmt: format + lint fixes
+3. nix flake check --show-trace   # treefmt, lock-sync, docs, every check
+4. nix build .#<thing-you-touched> -L   # real build, -L = logs
 ```
 
 Filtering check output: result lines are plain UTF-8 (✅ pass, ❌ fail),
@@ -259,41 +313,23 @@ nix flake check 2>&1 | grep -cE "^✅"                   # count passes
 nix flake check 2>&1 | grep -E "❌|error:" -A 5          # failures + trace
 ```
 
-`--fail` on deadnix makes findings fatal; `-e`/`--edit` removes them and
-writes the files — run it, review the diff, keep or revert. In
-module-heavy repos, unused module args are common; `deadnix -l -L --fail
-.` tolerates them (ignores unused lambda args/attrset-pattern names) if
-the repo's convention accepts them — follow the repo's `AGENTS.md`/gate,
-not taste.
+treefmt applies statix and deadnix fixes in place; review the diff
+before committing. When `checks.treefmt` fails, run `nix fmt` and commit
+the result; a failure that `nix fmt` cannot fix (shellcheck, sizelint,
+nixf-diagnose) prints the finding — fix the source.
 
-If a tool is not in the environment, run it through nixpkgs instead of
-skipping — but check first whether you are actually outside the devShell
-(see [DevShell and the agent](#devshell-and-the-agent)); tools missing
-from PATH usually means you wrapped when you didn't need to:
-
-```
-nix run nixpkgs#statix -- check .
-nix run nixpkgs#deadnix -- --fail .
-```
-
-These three tools belong in the repo's devShell (`packages = [alejandra
-statix deadnix ...]`) **and** in a gate, so lint/format failures break
-the build instead of relying on an agent's goodwill. The gate is either a
-`checks.lint` derivation or a CI step — see the `flake-parts` skill
-for a worked example.
-
-When fixing mechanically, run the fixers in this order: `deadnix -e .`,
-then `statix fix .`, then `nix fmt .` — deadnix removes unused bindings
-first (it can leave `{...}:` patterns behind), statix then normalizes
-what remains (e.g. `{...}:` → `_:`), and alejandra settles formatting
-last.
+Repos not yet converged (no treefmt): run `nix fmt .`, `statix check .`,
+`deadnix --fail .` (all in their devShell, or via
+`nix run nixpkgs#<tool> --`), and when fixing mechanically, run
+`deadnix -e .`, then `statix fix .`, then `nix fmt .`.
 
 Paste the last failing/passing command and its exit status when
 reporting results. "It should work" is not verification.
 
 ## DevShell and the agent
 
-Flake repos gate tooling and tokens behind their devShell. The agent
+Flake repos gate tooling and tokens behind their devShell — the devenv
+CLI shell (`devenv.yaml`) in converged repos. The agent
 process (opencode) is spawned inside `nix develop` 98% of the time —
 the formatter, linters, and repo tooling are already on PATH, and any
 secrets/tokens the repo injects are already exported. When inside, do

@@ -3,11 +3,12 @@
 
   inputs = {
     # Shared-input authority for the org: nixpkgs and flake-parts come
-    # from the artifact flake, so consumers that already follow pkgs lock
+    # from the artifact flake (input org-pkgs, never `pkgs`: that name is
+    # the nixpkgs package set), so consumers that already follow it lock
     # nothing new.
-    pkgs.url = "github:external-systems/pkgs";
-    nixpkgs.follows = "pkgs/nixpkgs";
-    flake-parts.follows = "pkgs/flake-parts";
+    org-pkgs.url = "github:external-systems/pkgs";
+    nixpkgs.follows = "org-pkgs/nixpkgs";
+    flake-parts.follows = "org-pkgs/flake-parts";
 
     # ------ External agent skill sources ------ #
     # Source-only repos (flake = false), exposed as lib.sources and
@@ -67,15 +68,21 @@
         ./flake-module.nix
       ];
 
-      # Checks, apps, formatter and devShell are evaluated only on demand;
-      # a consumer reading lib or packages never touches them.
+      # Apps, checks, the formatter and docs are evaluated only on demand;
+      # a consumer reading lib or packages never fetches the dev inputs
+      # (dev/flake.nix). The dev shell is devenv (devenv.yaml), not a
+      # flake output.
       partitionedAttrs = {
         apps = "dev";
         checks = "dev";
-        devShells = "dev";
         formatter = "dev";
+        # Docs/slides: `nix build .#documentation` (pkgs flakeModules.dev).
+        legacyPackages = "dev";
       };
 
-      partitions.dev.module = ./dev/flake-module.nix;
+      partitions.dev = {
+        module = ./dev/flake-module.nix;
+        extraInputsFlake = ./dev;
+      };
     };
 }

@@ -1,0 +1,22 @@
+# Shipping skills
+
+```
+external-systems/skills      skills/<name>/ + skills-* inputs
+  ownGroups, selections      -> lists of {src; skillsDir; selectSkills}
+  externalSkills presets     base (= core group), full, sandbox
+        |
+external-systems/modules     homeModules.agents
+  homeSpec.agents.skills.{preset, extraSources}
+        |
+external-systems/home        per-user profiles pick their skills
+```
+
+1. Write `skills/<name>/SKILL.md` (frontmatter `name` = directory name,
+   double-quoted `description`).
+2. Add the name to exactly one `ownGroups` group in `flake-module.nix`.
+3. Scripts need a runtime entry (`runtime/default.nix` or
+   `skills/<name>/runtime.nix`).
+4. `check-skills`, `fmt`, `check`, then open a PR.
+
+Changes reach machines after `nix flake update skills` in the consumer and
+a human-run deploy. The `skills-repo` skill has the full procedure.
