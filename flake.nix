@@ -67,15 +67,21 @@
         ./flake-module.nix
       ];
 
-      # Checks, apps, formatter and devShell are evaluated only on demand;
-      # a consumer reading lib or packages never touches them.
+      # Apps, checks, the formatter and docs are evaluated only on demand;
+      # a consumer reading lib or packages never fetches the dev inputs
+      # (dev/flake.nix). The dev shell is devenv (devenv.yaml), not a
+      # flake output.
       partitionedAttrs = {
         apps = "dev";
         checks = "dev";
-        devShells = "dev";
         formatter = "dev";
+        # Docs/slides: `nix build .#documentation` (pkgs flakeModules.dev).
+        legacyPackages = "dev";
       };
 
-      partitions.dev.module = ./dev/flake-module.nix;
+      partitions.dev = {
+        module = ./dev/flake-module.nix;
+        extraInputsFlake = ./dev;
+      };
     };
 }

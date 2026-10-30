@@ -141,7 +141,7 @@ and never run it.
 
 ```sh
 git add -A                       # nix only sees tracked files
-nix fmt . && statix check . && deadnix --fail .
+nix fmt                          # treefmt (inside devenv: fmt)
 nix flake check                  # all gates
 ls $(nix build --no-link --print-out-paths .#base)
 ```
@@ -150,7 +150,8 @@ Gates:
 - `skill-frontmatter`: name, quoting and markup rules.
 - `own-skills-grouped`: each own skill is in exactly one group.
 - `skills-runtime-coverage`: skills with scripts have runtime entries.
-- `lint`: alejandra, statix and deadnix.
+- `treefmt`: alejandra, deadnix, statix, nixf-diagnose, shellcheck, sizelint.
+- `lock-sync`: flake.lock, dev/flake.lock and devenv.lock pin one nixpkgs.
 - The preset trees and `skills-runtime` build.
 
 ## Open the PR

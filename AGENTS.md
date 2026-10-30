@@ -12,7 +12,9 @@ literals or tokens in any file. To add or wire a skill, load the
 - `flake-module.nix`: everything consumers evaluate. `sources` (raw inputs), `ownGroups` (this repo's skills by group), `selections` (ready-made source lists), `externalSkills` presets (`base` = the `core` group and the default, `full`, `sandbox`), `mkSkillsTree`, `mkSkillsRuntime`, `packages.*`.
 - `lib/mk-skills.nix`: `mkSkills`/`skillSet`, a drop-in for the AGENTS flake's `mkSkills`. `lib/mk-skills-runtime.nix`: the runtime buildEnv. `lib/check-skill-metadata.py`: frontmatter validator.
 - `runtime/default.nix`: per-skill runtime needs (`packages`, `python`, `node`, `office`). `runtime/npm/`: npm modules on `NODE_PATH`.
-- `dev/flake-module.nix`: the `dev` flake-parts partition (checks, apps, formatter, devShell). Consumers never evaluate it.
+- `dev/flake.nix` + `dev/flake.lock`: dev-only inputs (treefmt-nix, presenting). `dev/flake-module.nix`: the `dev` flake-parts partition (pkgs `flakeModules.dev`, docs, skill gates, apps). Consumers never evaluate it.
+- `devenv.yaml` + `devenv.lock` + `devenv.nix`: the dev shell (devenv CLI; the org shell comes from `pkgs/devenv`). There is no flake devShell.
+- `documentation/`: the docs site (`docs/`) and slide deck (`slides/`).
 - `skills/<name>/SKILL.md`: this repo's skills, with optional `references/` and `runtime.nix`.
 
 ## Consumers
@@ -22,10 +24,12 @@ literals or tokens in any file. To add or wire a skill, load the
 
 ## Tool loop
 - `git add` new files before any `nix` command. Nix evaluates the git tree, so untracked files do not exist for it.
-- For any `.nix` change, run `nix fmt .` (bare `nix fmt` reads stdin and fails), then `statix check .`, then `deadnix --fail .`. All three are in `nix develop`.
-- Gate: `nix flake check`. It runs `lint`, `skill-frontmatter`, `own-skills-grouped`, `skills-runtime-coverage`, the `base`/`full`/`sandbox` trees, `skills-runtime` and `package-skills`. Markdown-only skill edits still need `skill-frontmatter` and `own-skills-grouped`, so run the full check anyway: it is cheap apart from the first `skills-runtime` build.
+- The shell is devenv. If `DEVENV_ROOT` is unset, run commands with `devenv shell -- <cmd>`.
+- For any change, run `fmt` (treefmt: alejandra, deadnix, statix, nixf-diagnose, shellcheck, sizelint). `check-skills` validates frontmatter without Nix.
+- Gate: `check` (`nix flake check`). It runs `treefmt`, `lock-sync`, `documentation`, `slides`, `skill-frontmatter`, `own-skills-grouped`, `skills-runtime-coverage`, the `base`/`full`/`sandbox` trees, `skills-runtime` and `package-skills`. Markdown-only skill edits still need `skill-frontmatter` and `own-skills-grouped`, so run the full check anyway: it is cheap apart from the first `skills-runtime` build.
 - Inspect a tree: `ls $(nix build --no-link --print-out-paths .#base)`.
-- Add a source: add the input, then `nix flake lock`. Bump one source with `nix flake update skills-<name>`. Never bump `pkgs` casually, because it moves nixpkgs for the whole org.
+- Add a source: add the input, then `nix flake lock`. Bump one source with `nix flake update skills-<name>`. Never bump `pkgs` casually, because it moves nixpkgs for the whole org; when you do, run `sync-locks` in the same commit.
+- Docs: `nix build .#documentation`, then open `result/index.html` from disk; `devenv up` for live preview on :8981.
 
 ## Rules
 - Every own skill sits in exactly one `ownGroups` group. Add `core` only when every user should have the skill.

@@ -13,12 +13,30 @@ flake.nix               # inputs (nixpkgs + flake-parts follow external-systems/
 flake-module.nix        # lib.* and packages.* (what consumers evaluate)
 lib/mk-skills.nix       # mkSkills: compose skill dirs into one linkFarm
 lib/check-skill-metadata.py  # SKILL.md frontmatter validator
-dev/flake-module.nix    # dev partition: checks, apps, formatter, devShell
+dev/flake.nix           # dev-only inputs, locked in dev/flake.lock
+dev/flake-module.nix    # dev partition: pkgs flakeModules.dev, docs, gates, apps
+devenv.yaml devenv.nix  # the dev shell (devenv CLI, org shell from pkgs)
+documentation/          # docs site and slide deck
 skills/<name>/SKILL.md  # this repo's skills
 ```
 
-Checks, apps, formatter and devShell live in the `dev` flake-parts
-partition, so a consumer reading `lib` or `packages` never evaluates them.
+Checks, apps, the formatter and docs live in the `dev` flake-parts
+partition, so a consumer reading `lib` or `packages` never evaluates them
+or fetches their inputs. The repo follows the org flake standard (the
+`nix-style` skill).
+
+## Develop
+
+Needs Nix and devenv.
+
+```sh
+devenv allow     # auto-activation (after `devenv hook`)
+fmt              # treefmt: org formatters and linters
+check-skills     # frontmatter validator, no nix
+check            # nix flake check: every gate
+docs-build       # static docs to ./result-docs; open index.html from disk
+devenv up        # live docs :8981 and slides :8982
+```
 
 ## Outputs
 
@@ -37,7 +55,7 @@ partition, so a consumer reading `lib` or `packages` never evaluates them.
 | `lib.mkSkillsTree` | `{pkgs, preset ? "base", extraSources ? []}` → preset + extra sources |
 | `lib.mkSkillsRuntime` | Same arguments plus `office ? true` → buildEnv of what that composition's scripts call; `passthru.env.NODE_PATH` |
 | `apps.<system>.package-skills` | `nix run .#package-skills -- OUT_DIR`: one ZIP per skill (validates first) |
-| `checks.<system>.*` | `lint`, `skill-frontmatter`, `own-skills-grouped`, `skills-runtime-coverage`, the preset trees, `skills-runtime`, `package-skills` |
+| `checks.<system>.*` | `treefmt`, `lock-sync`, `documentation`, `slides`, `skill-frontmatter`, `own-skills-grouped`, `skills-runtime-coverage`, the preset trees, `skills-runtime`, `package-skills` |
 
 Collision rules: custom skills (`skills/`) always win; among externals,
 earlier entries win. `selectSkills` drops unknown names silently, so
@@ -146,8 +164,7 @@ clear first paragraph and skim-friendly sections.
   index of this tree.
 - `git add` every new file before any `nix build` / `nix flake check` —
   Nix evaluates the flake from the git tree; untracked files do not exist.
-- If a `.nix` file changed, run `nix fmt` → `statix check .` →
-  `deadnix --fail .`, then `nix flake check`.
+- Run `fmt`, then `check` (`nix flake check`).
 - Public repo: no secrets in any file (skills, README included).
 
 ## Current skills
@@ -167,10 +184,11 @@ Workflow / behavior skills:
 Repo knowledge skills (deep "how things work" docs, loaded on demand by
 their description):
 
-- `nix-style` — Nix code style + the mandatory alejandra/statix/deadnix
-  tool loop (user preferences).
+- `nix-style` — Nix code style, the treefmt tool loop and the org flake
+  standard (pkgs flake modules, dev partition, devenv CLI shell, docs and
+  slides) (user preferences).
 - `flakeparts` — flake-parts module system mechanics, inputs, the
-  checks.lint gate, integrations.
+  lint gate, integrations.
 - `import-tree` — flake-parts auto-import via import-tree: mechanics,
   tree layout, agent rules.
 - `determinate` — Determinate Systems + FlakeHub: docs map, publishing,

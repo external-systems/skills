@@ -1,0 +1,12 @@
+# devenv CLI entry: devenv shell, auto-activation (devenv hook + devenv
+# allow), devenv up, devenv test, devenv mcp. nixpkgs comes from pkgs at
+# the rev flake.lock holds (checks.lock-sync; fix with `sync-locks`).
+inputs:
+  pkgs:
+    url: github:external-systems/pkgs
+  nixpkgs:
+    follows: pkgs/nixpkgs
+imports:
+  # The org shell: fmt, check, sync-locks, docs, slides; devenv up serves
+  # docs and slides.
+  - pkgs/devenv
