@@ -8,7 +8,7 @@
   ...
 }: {
   imports = [
-    inputs.pkgs.flakeModules.dev
+    inputs.org-pkgs.flakeModules.dev
     ../documentation/module.nix
   ];
 

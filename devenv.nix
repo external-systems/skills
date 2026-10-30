@@ -1,4 +1,4 @@
-# skills' additions to the org shell (pkgs/devenv): the frontmatter
+# skills' additions to the org shell (org-pkgs/devenv): the frontmatter
 # validator's python and the package-skills app's zip.
 {pkgs, ...}: {
   packages = [

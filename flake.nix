@@ -3,11 +3,12 @@
 
   inputs = {
     # Shared-input authority for the org: nixpkgs and flake-parts come
-    # from the artifact flake, so consumers that already follow pkgs lock
+    # from the artifact flake (input org-pkgs, never `pkgs`: that name is
+    # the nixpkgs package set), so consumers that already follow it lock
     # nothing new.
-    pkgs.url = "github:external-systems/pkgs";
-    nixpkgs.follows = "pkgs/nixpkgs";
-    flake-parts.follows = "pkgs/flake-parts";
+    org-pkgs.url = "github:external-systems/pkgs";
+    nixpkgs.follows = "org-pkgs/nixpkgs";
+    flake-parts.follows = "org-pkgs/flake-parts";
 
     # ------ External agent skill sources ------ #
     # Source-only repos (flake = false), exposed as lib.sources and

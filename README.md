@@ -9,12 +9,12 @@ kimi-code `~/.kimi-code/skills`, claude-code `~/.claude/skills`, and
 ## Layout
 
 ```
-flake.nix               # inputs (nixpkgs + flake-parts follow external-systems/pkgs), partitions
+flake.nix               # inputs (nixpkgs + flake-parts follow the org-pkgs input), partitions
 flake-module.nix        # lib.* and packages.* (what consumers evaluate)
 lib/mk-skills.nix       # mkSkills: compose skill dirs into one linkFarm
 lib/check-skill-metadata.py  # SKILL.md frontmatter validator
 dev/flake.nix           # dev-only inputs, locked in dev/flake.lock
-dev/flake-module.nix    # dev partition: pkgs flakeModules.dev, docs, gates, apps
+dev/flake-module.nix    # dev partition: org-pkgs flakeModules.dev, docs, gates, apps
 devenv.yaml devenv.nix  # the dev shell (devenv CLI, org shell from pkgs)
 documentation/          # docs site and slide deck
 skills/<name>/SKILL.md  # this repo's skills

@@ -3,7 +3,7 @@
     "flake-parts": {
       "inputs": {
         "nixpkgs-lib": [
-          "pkgs",
+          "org-pkgs",
           "nixpkgs"
         ]
       },
@@ -52,7 +52,7 @@
         "type": "github"
       }
     },
-    "pkgs": {
+    "org-pkgs": {
       "inputs": {
         "flake-parts": "flake-parts",
         "import-tree": "import-tree",
@@ -75,14 +75,14 @@
     "root": {
       "inputs": {
         "flake-parts": [
-          "pkgs",
+          "org-pkgs",
           "flake-parts"
         ],
         "nixpkgs": [
-          "pkgs",
+          "org-pkgs",
           "nixpkgs"
         ],
-        "pkgs": "pkgs",
+        "org-pkgs": "org-pkgs",
         "skills-anthropic": "skills-anthropic",
         "skills-cloudflare": "skills-cloudflare",
         "skills-fluxcd": "skills-fluxcd",

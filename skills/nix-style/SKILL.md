@@ -45,8 +45,10 @@ in [references/flake-standard.md](references/flake-standard.md); load it
 before creating a flake repo or touching a repo's partition wiring,
 `dev/`, `devenv.yaml`/`devenv.nix` or `documentation/`.
 
-- **Inputs**: `pkgs.url = "github:external-systems/pkgs"`, with
-  `nixpkgs`, `flake-parts` and `import-tree` following `pkgs/*`. Every
+- **Inputs**: `org-pkgs.url = "github:external-systems/pkgs"`, with
+  `nixpkgs`, `flake-parts` and `import-tree` following `org-pkgs/*`.
+  The input is never named `pkgs` (in `flake.nix` or `devenv.yaml`):
+  `pkgs` always means the nixpkgs package set. Every
   other input follows them where it can.
 - **Partition**: `partitionedAttrs` sends `apps`, `checks` and
   `formatter` to `dev`; `partitions.dev = {module =
@@ -55,12 +57,12 @@ before creating a flake repo or touching a repo's partition wiring,
 - **Dev inputs** (`dev/flake.nix`, locked in `dev/flake.lock`):
   `dev-nixpkgs`, `treefmt-nix`, `presenting`, and any test-only inputs.
 - **Shared flake module**: the dev partition imports
-  `inputs.pkgs.flakeModules.dev` (org linters via treefmt,
+  `inputs.org-pkgs.flakeModules.dev` (org linters via treefmt,
   `checks.lock-sync`, `apps.sync-locks`, docs and slides as checks).
   Never copy the treefmt program list into a repo.
-- **Dev shell = devenv CLI only**: `devenv.yaml` takes the pkgs flake as
-  `org-pkgs` (never `pkgs`, which would shadow nixpkgs' `pkgs` module
-  argument), follows `org-pkgs/nixpkgs`, and imports `org-pkgs/devenv`
+- **Dev shell = devenv CLI only**: `devenv.yaml` takes `org-pkgs`
+  (devenv would let an input named `pkgs` shadow nixpkgs' `pkgs`),
+  follows `org-pkgs/nixpkgs`, and imports `org-pkgs/devenv`
   (the org shell: `fmt`,
   `check`, `sync-locks`, `docs-build`, `docs`, `slides`; `devenv up`
   serves docs on :8981 and slides on :8982). `devenv.nix` adds the repo's languages, services and
@@ -71,7 +73,7 @@ before creating a flake repo or touching a repo's partition wiring,
   static site (via `legacyPackages`, partitioned to `dev`); open
   `result/index.html` from disk.
 - **One nixpkgs across three locks**: `flake.lock`, `dev/flake.lock`,
-  `devenv.lock`. After `nix flake update pkgs`, run `sync-locks` in the
+  `devenv.lock`. After `nix flake update org-pkgs`, run `sync-locks` in the
   same commit.
 
 A repo that does not match yet still gets the style rules below; offer to
