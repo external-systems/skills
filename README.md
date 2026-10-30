@@ -24,19 +24,20 @@ partition, so a consumer reading `lib` or `packages` never evaluates them.
 
 | Output | What it is |
 |---|---|
-| `packages.<system>.base` (`default`) | `skills/` only: the small shared base every user gets |
-| `packages.<system>.full` | `skills/` + the former fleet-wide host set |
-| `packages.<system>.sandbox` | `skills/` + the set baked at `/opt/skills` in the code-agent image |
+| `packages.<system>.base` (`default`) | The `core` group: the small shared base every user gets |
+| `packages.<system>.full` | All of `skills/` + the former fleet-wide host set |
+| `packages.<system>.sandbox` | All of `skills/` + the set baked at `/opt/skills` in the code-agent image |
 | `packages.<system>.skills-runtime` | Tools and modules the `full` set's scripts call |
 | `lib.customSkills` | Path to this repo's `skills/` |
 | `lib.sources.<name>` | Raw external skill sources (`anthropic`, `cloudflare`, `payloadcms`, `supabase`, `fluxcd`, `terraform`, `google`, `mattpocock`, `openshell`) |
-| `lib.selections.<name>` | Ready-made `externalSkills` lists per source (`anthropic`, `anthropic-all`, `cloudflare`, `payloadcms`, `supabase`, `fluxcd`, `terraform`, `google`, `mattpocock`, `openshell`) |
+| `lib.ownGroups` | This repo's skills by group: `core`, `fleet`, `kubernetes`, `networking`, `infra`, `sandbox` |
+| `lib.selections.<name>` | Ready-made `externalSkills` lists: one per own group, `own-all`, and one per source (`anthropic`, `anthropic-all`, `cloudflare`, `payloadcms`, `supabase`, `fluxcd`, `terraform`, `google`, `mattpocock`, `openshell`) |
 | `lib.externalSkills.{base,full,sandbox}` | Presets built from the selections |
 | `lib.mkSkills` | `{pkgs, customSkills ? null, externalSkills ? []}` → linkFarm; drop-in for the AGENTS flake's `lib.mkSkills` |
-| `lib.mkSkillsTree` | `{pkgs, preset ? "base", extraSources ? []}` → `skills/` + preset + extra sources |
+| `lib.mkSkillsTree` | `{pkgs, preset ? "base", extraSources ? []}` → preset + extra sources |
 | `lib.mkSkillsRuntime` | Same arguments plus `office ? true` → buildEnv of what that composition's scripts call; `passthru.env.NODE_PATH` |
 | `apps.<system>.package-skills` | `nix run .#package-skills -- OUT_DIR`: one ZIP per skill (validates first) |
-| `checks.<system>.*` | `lint`, `skill-frontmatter`, `skills-runtime-coverage`, the preset trees, `skills-runtime`, `package-skills` |
+| `checks.<system>.*` | `lint`, `skill-frontmatter`, `own-skills-grouped`, `skills-runtime-coverage`, the preset trees, `skills-runtime`, `package-skills` |
 
 Collision rules: custom skills (`skills/`) always win; among externals,
 earlier entries win. `selectSkills` drops unknown names silently, so
@@ -45,14 +46,16 @@ verify the installed set after changing a selection.
 ## Picking skills per user
 
 Every source lives here as an input; consumers never add `skills-*`
-inputs of their own. Each home-manager user gets the `base` preset and
-picks extras in their profile (the agents module lives in
-external-systems/modules):
+inputs of their own. Each home-manager user gets the `base` preset (the
+`core` group: baton-pass, clan-core, devenv, flakeparts, import-tree,
+mkdocs-reveal, nix-style) and picks extras in their profile (the agents
+module lives in external-systems/modules). List own groups before
+external sources so own skills keep winning name collisions:
 
 ```nix
 # netsa's profile
 homeSpec.agents.skills.extraSources = with inputs.skills.lib.selections;
-  anthropic ++ fluxcd ++ terraform ++ cloudflare;
+  fleet ++ kubernetes ++ networking ++ infra ++ anthropic ++ fluxcd;
 ```
 
 The agents module builds both the tree and the runtime from the same
@@ -120,8 +123,9 @@ clear first paragraph and skim-friendly sections.
    (`name`, `description`).
 2. Optional: supporting files (or a `references/` subdir) inside the
    skill dir for progressive disclosure.
-3. `git add` it. That is the whole wiring: `mkSkillsTree` merges the
-   entire `skills/` tree into every preset. If the skill ships scripts,
+3. Add its name to one `ownGroups` entry in `flake-module.nix`
+   (`checks.own-skills-grouped` fails otherwise), then `git add` it.
+   If the skill ships scripts,
    add a `runtime.nix` (or a `runtime/default.nix` entry). Consumers pick it up on their
    next `nix flake update skills` and deploy.
 

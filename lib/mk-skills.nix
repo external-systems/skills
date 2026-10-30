@@ -2,7 +2,8 @@
 # for the AGENTS flake's lib.mkSkills with the same arguments and output
 # name. A skill is a directory; files (README, LICENSE) are ignored.
 # Custom skills win name collisions; among externals, earlier entries win.
-# selectSkills drops unknown names silently.
+# selectSkills drops unknown names silently. skillsDir = null reads src
+# itself (this repo's own selections point straight at skills/).
 {lib}: let
   skillsIn = dir: select: let
     names = lib.attrNames (lib.filterAttrs (_: type: type == "directory") (builtins.readDir dir));
@@ -19,7 +20,12 @@
     skillsDir ? "skills",
     selectSkills ? null,
   }:
-    skillsIn "${src}/${skillsDir}" selectSkills;
+    skillsIn (
+      if skillsDir == null
+      then src
+      else "${src}/${skillsDir}"
+    )
+    selectSkills;
 
   # The composed skill set as {name = path;}; listToAttrs keeps the first
   # occurrence of a name.

@@ -83,6 +83,24 @@
       # mkSkills builds the linkFarm.
       inherit (packages) base full sandbox skills-runtime;
 
+      # Every skill in skills/ sits in exactly one ownGroups entry, so a
+      # new skill can't land unreachable from every selection.
+      own-skills-grouped = let
+        all = lib.attrNames (lib.filterAttrs (_: type: type == "directory") (builtins.readDir self.lib.customSkills));
+        grouped = lib.concatLists (lib.attrValues self.lib.ownGroups);
+        missing = lib.subtractLists grouped all;
+        dupes = lib.filter (name: lib.count (n: n == name) grouped > 1) (lib.unique grouped);
+        unknown = lib.subtractLists all grouped;
+      in
+        pkgs.runCommand "own-skills-grouped" {} (
+          if missing == [] && dupes == [] && unknown == []
+          then "touch $out"
+          else ''
+            echo "FAIL: ungrouped: ${toString missing}; in several groups: ${toString dupes}; unknown: ${toString unknown}" >&2
+            exit 1
+          ''
+        );
+
       # Runtime coverage: every skill in the full tree that ships a
       # script needs a runtime/default.nix (or skills/<name>/runtime.nix)
       # entry, so a new skill can't land without its tools and agents
