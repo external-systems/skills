@@ -150,7 +150,7 @@ Gates:
 - `skill-frontmatter`: name, quoting and markup rules.
 - `own-skills-grouped`: each own skill is in exactly one group.
 - `skills-runtime-coverage`: skills with scripts have runtime entries.
-- `treefmt`: alejandra, deadnix, statix, nixf-diagnose, shellcheck, sizelint.
+- `treefmt`: alejandra, deadnix, statix, nixf-diagnose (every rule), shellcheck, sizelint.
 - `lock-sync`: flake.lock, dev/flake.lock and devenv.lock pin one nixpkgs.
 - The preset trees and `skills-runtime` build.
 - `package-skills`: the claude.ai zips unpack to valid skills that

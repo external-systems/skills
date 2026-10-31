@@ -1,6 +1,6 @@
 ---
 name: nix-style
-description: "Nix code style, tool loop and the org flake standard (user preferences): attribute nesting/quoting/inherit rules, module-system and repo-root-path conventions, treefmt (alejandra, deadnix, statix, nixf-diagnose, shellcheck, sizelint) via external-systems/pkgs flakeModules, the devenv CLI shell (devenv.yaml importing org-pkgs/devenv), the dev flake-parts partition holding checks, formatter and MkDocs/reveal.js docs with its own dev/flake.lock, lock sync, the pkgs repo template, and the flake-repo agent contract. Use when writing or editing any .nix file, creating a new flake repo, or adding a formatter, linter, dev shell or docs to one."
+description: "Nix code style, tool loop and the org flake standard (user preferences): attribute nesting/quoting/inherit rules, module-system and repo-root-path conventions, treefmt (alejandra, deadnix, statix, nixf-diagnose — the nixd editor diagnostics — shellcheck, sizelint) via external-systems/pkgs flakeModules, the devenv CLI shell (devenv.yaml importing org-pkgs/devenv), the dev flake-parts partition holding checks, formatter and MkDocs/reveal.js docs with its own dev/flake.lock, lock sync, the pkgs repo template, and the flake-repo agent contract. Use when writing or editing any .nix file, creating a new flake repo, or adding a formatter, linter, dev shell or docs to one."
 ---
 
 # nix-style — Nix code style and tool loop
@@ -252,7 +252,8 @@ eval channel, so the helper is always safe there.
 
 treefmt is the formatter (`nix fmt`, from `flakeModules.treefmt`). It
 runs alejandra (layout), deadnix (`no-lambda-pattern-names`), statix,
-nixf-diagnose, shellcheck and sizelint in one pass. alejandra owns the
+nixf-diagnose (every rule, report only), shellcheck and sizelint in one
+pass. alejandra owns the
 layout: never hand-format Nix, never fight its choices, never merge
 conflict over whitespace. After every edit:
 
@@ -274,9 +275,40 @@ What CI automates (`checks.treefmt`, built by `nix flake check`):
 | alejandra | formatting |
 | deadnix | unused bindings (lambda pattern names are tolerated) |
 | statix | anti-patterns, incl. `repeated_keys` (3+ adjacent) and `manual_inherit*` |
-| nixf-diagnose | removed `builtins` primop prefixes |
+| nixf-diagnose | every nixf rule — the same diagnostics nixd shows in the editor (see below) |
 | shellcheck | shell scripts |
 | sizelint | oversized files |
+
+### nixf-diagnose and the editor
+
+nixf is the Nix parser and semantic analyser inside nixd, the Nix
+language server. VS Code (the Nix IDE extension with nixd) underlines
+nixf's diagnostics as you type; `nixf-diagnose` is the CLI wrapper
+around the same engine (`nixf-tidy`), so `nix fmt` and `checks.treefmt`
+fail on exactly what the editor shows. Every rule runs (no `only`, no
+`ignore`) with variable lookup on; fixes are not applied automatically
+(`autoFix = false`), because nixf's fixes rename or delete code. Fix the
+source by hand. The rules you will meet:
+
+| ID | Fix |
+|---|---|
+| `sema-primop-overridden` | a binding shadows a prelude builtin (`placeholder`, `toString`, `map`, `import`, ...): rename it (`isPlaceholder`) |
+| `sema-constant-overridden` | a binding shadows `true`/`false`/`null`: rename it |
+| `sema-primop-removed-prefix` | `builtins.baseNameOf` → `baseNameOf`: drop the prefix on prelude builtins |
+| `sema-primop-needs-prefix`, `sema-primop-unknown` | add `builtins.`, or fix the name |
+| `sema-unused-def-let` | unused `let` binding: delete it |
+| `sema-unused-def-lambda-noarg-formal`, `-witharg-formal`, `-witharg-arg` | unused `{config, ...}:` formal or `args@`: delete it (stricter than deadnix's `no-lambda-pattern-names`; nixf wins) |
+| `sema-extra-rec` | `rec { }` with no self-reference: drop `rec` |
+| `sema-extra-with` | `with x;` whose names are never used: drop it |
+| `sema-undefined-variable` | a name not in scope: bind it or fix the typo |
+| `sema-duplicated-attrname`, `sema-dup-formal*` | the same key or formal twice: merge them |
+| `parse-*`, `lex-*` | syntax: `parse-redundant-paren` means drop the parentheses |
+
+Run it on its own with
+`nix run nixpkgs#nixf-diagnose -- $(git ls-files '*.nix')`. Treat an
+editor squiggle in a `.nix` file as a CI failure waiting to happen.
+
+### Agent-enforced conventions
 
 What is convention the agent must enforce itself (CI cannot see it):
 
