@@ -15,8 +15,11 @@ at the bottom.
     presenting = {
       url = "github:external-systems/presenting";
       # Dedupe onto this flake's pins — smaller closure, one upgrade path.
-      # Nested form: 3+ flat `inputs.<x>.follows` lines trip statix W20.
-      inputs = {
+      # presenting takes nixpkgs and flake-parts from its org-pkgs input,
+      # so pin them there. A flake that already has org-pkgs uses
+      # `inputs.org-pkgs.follows = "org-pkgs";` instead. Nested form: 3+
+      # flat `inputs.<x>.follows` lines trip statix W20.
+      inputs.org-pkgs.inputs = {
         nixpkgs.follows = "nixpkgs";
         flake-parts.follows = "flake-parts";
       };
