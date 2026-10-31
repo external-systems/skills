@@ -138,6 +138,40 @@ is stricter — 2+ assignments of the same prefix in one attrset are a
 violation, adjacency irrelevant. Enforce it while writing, not by waiting
 for the linter.
 
+### Nesting in JSON and other config files
+
+The same nesting rule applies to config files written by hand next to
+the Nix code, JSON first: never repeat a top-level (or any) key prefix
+across siblings. Where a tool reads dotted keys as paths (VS Code
+`settings.json`, `.vscode/*`), write one nested object per shared
+prefix instead of several dotted keys:
+
+```json
+// good: one "nix" object
+{
+  "nix": {
+    "enableLanguageServer": true,
+    "serverPath": "nixd",
+    "serverSettings": {"nixd": {"formatting": {"command": ["alejandra"]}}}
+  }
+}
+```
+
+```json
+// bad: "nix." repeated across three top-level keys
+{
+  "nix.enableLanguageServer": true,
+  "nix.serverPath": "nixd",
+  "nix.serverSettings": {"nixd": {}}
+}
+```
+
+A single member may stay dotted (`"editor.formatOnSave": true`), as in
+Nix. Keys whose dots are literal, not paths (`"[nix]"` language blocks,
+schema URLs, file globs, JSON consumed by tools that do not split on
+dots), stay as written: never split those. Generated JSON
+(`flake.lock`, `devenv.lock`, `package-lock.json`) is never edited.
+
 ### Attribute keys and quoting
 
 Attribute keys are identifiers, and Nix identifiers legally contain
@@ -325,6 +359,7 @@ What is convention the agent must enforce itself (CI cannot see it):
 
 - quoting rule — no quotes on identifier keys
 - 2+-member nesting (statix needs 3+ adjacent repeats)
+- the same nesting in hand-written JSON (`.vscode/settings.json`, ...)
 - inherit consolidation
 - `relativeToRoot` for repo-root paths
 - `enabled` preference
