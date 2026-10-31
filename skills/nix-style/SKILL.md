@@ -73,8 +73,8 @@ before creating a flake repo or touching a repo's partition wiring,
   nixpkgs from its own inputs, flake-parts options from `debug.options`
   and `currentSystem.options` (`debug = true;` in `mkFlake`), NixOS
   options, alejandra formatting. A repo with its own module system
-  overrides `options` in its copy. nixd and alejandra come from the org
-  devenv shell. See [nixd settings](references/flake-standard.md#nixd-settings).
+  overrides `options` in its copy. nixd comes from the org devenv shell
+  (`languages.nix.enable`), alejandra from its packages. See [nixd settings](references/flake-standard.md#nixd-settings).
 - **Docs and slides in every repo**: `documentation/module.nix` imports
   `inputs.presenting.flakeModules.default` (the `mkdocs-reveal` skill),
   from the dev partition only. `nix build .#documentation` builds the

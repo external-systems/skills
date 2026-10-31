@@ -224,29 +224,33 @@ Deck format, embedding and GitHub Pages: the `mkdocs-reveal` skill.
 Every repo commits `.vscode/settings.json` from the template and sets
 `debug = true;` in `mkFlake` (exposes `debug.options` and
 `currentSystem.options`; lazy, consumers never evaluate them). nixd
-evaluates `./.` from the workspace root, so one file fits every clone:
+evaluates `./.` from the workspace root, so one file fits every clone.
+Settings nest under one `nix` key (VS Code reads nested objects the
+same as dotted keys), following the attribute-nesting rule:
 
 ```json
 {
-  "nix.enableLanguageServer": true,
-  "nix.serverPath": "nixd",
-  "nix.serverSettings": {
-    "nixd": {
-      "nixpkgs": {
-        "expr": "import (builtins.getFlake (builtins.toString ./.)).inputs.nixpkgs { }"
-      },
-      "formatting": {
-        "command": ["alejandra", "--quiet"]
-      },
-      "options": {
-        "flake-parts": {
-          "expr": "(builtins.getFlake (builtins.toString ./.)).debug.options"
+  "nix": {
+    "enableLanguageServer": true,
+    "serverPath": "nixd",
+    "serverSettings": {
+      "nixd": {
+        "nixpkgs": {
+          "expr": "import (builtins.getFlake (builtins.toString ./.)).inputs.nixpkgs { }"
         },
-        "flake-parts-perSystem": {
-          "expr": "(builtins.getFlake (builtins.toString ./.)).currentSystem.options"
+        "formatting": {
+          "command": ["alejandra", "--quiet"]
         },
-        "nixos": {
-          "expr": "((builtins.getFlake (builtins.toString ./.)).inputs.nixpkgs.lib.nixosSystem { modules = [ { nixpkgs.hostPlatform = builtins.currentSystem; } ]; }).options"
+        "options": {
+          "flake-parts": {
+            "expr": "(builtins.getFlake (builtins.toString ./.)).debug.options"
+          },
+          "flake-parts-perSystem": {
+            "expr": "(builtins.getFlake (builtins.toString ./.)).currentSystem.options"
+          },
+          "nixos": {
+            "expr": "((builtins.getFlake (builtins.toString ./.)).inputs.nixpkgs.lib.nixosSystem { modules = [ { nixpkgs.hostPlatform = builtins.currentSystem; } ]; }).options"
+          }
         }
       }
     }
@@ -266,7 +270,7 @@ Override `options` where the repo has its own option namespace:
 
 Test an expression before committing it:
 `nix eval --impure --expr 'builtins.attrNames (<expr>)'` from the repo
-root. `nixd` and `alejandra` are on PATH in the devenv shell; start the
+root. `nixd` (org shell `languages.nix.enable`, which also adds statix and deadnix) and `alejandra` are on PATH in the devenv shell; start the
 editor from it (or install them per user, as `homeModules.vscode`
 does). Never set `diagnostic.suppress`: nixf findings fail
 `checks.treefmt`.
