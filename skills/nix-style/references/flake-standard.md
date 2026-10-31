@@ -36,7 +36,7 @@ dev/flake-module.nix        the dev partition
 devenv.yaml / devenv.lock   the shell: org-pkgs input, nixpkgs follows
                             org-pkgs/nixpkgs, imports org-pkgs/devenv
 devenv.nix                  this repo's languages, services, processes
-documentation/              mkdocs.yml, docs/, slides/, module.nix
+documentation/              mkdocs.yml, docs/, slides/, flake-module.nix
 AGENTS.md, README.md, .gitignore (result*, .devenv*, devenv.local.nix)
 .vscode/settings.json       nixd settings (below); extensions.json
                             recommends jnoortheen.nix-ide
@@ -131,7 +131,7 @@ because clan-core and kubenix follow it).
 {inputs, ...}: {
   imports = [
     inputs.org-pkgs.flakeModules.dev
-    ../documentation/module.nix
+    ../documentation/flake-module.nix
   ];
   # repo checks and maintainer apps go here (or in modules imported here)
 }
@@ -176,7 +176,7 @@ Rules:
 - Activation: `devenv hook <shell>` once per machine in the shell rc, then
   `devenv allow` once per checkout.
 
-## documentation/module.nix
+## documentation/flake-module.nix
 
 ```nix
 {inputs, ...}: {

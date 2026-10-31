@@ -75,7 +75,7 @@ before creating a flake repo or touching a repo's partition wiring,
   options, alejandra formatting. A repo with its own module system
   overrides `options` in its copy. nixd comes from the org devenv shell
   (`languages.nix.enable`), alejandra from its packages. See [nixd settings](references/flake-standard.md#nixd-settings).
-- **Docs and slides in every repo**: `documentation/module.nix` imports
+- **Docs and slides in every repo**: `documentation/flake-module.nix` imports
   `inputs.presenting.flakeModules.default` (the `mkdocs-reveal` skill),
   from the dev partition only. `nix build .#documentation` builds the
   static site (via `legacyPackages`, partitioned to `dev`); open
@@ -289,6 +289,26 @@ eval channel, so the helper is always safe there.
 - One concern per file; let the repo's auto-import mechanism pick it up
   (flake-parts + import-tree style: new files are auto-loaded, there is
   no import list to update) — see the `import-tree` skill.
+
+### Flake-parts module file names
+
+| File | Use |
+|---|---|
+| `<dir>/flake-module.nix` | The flake-parts module that is a directory's entry point, imported by explicit path (`./dev/flake-module.nix`, `../documentation/flake-module.nix`). Use it for directories that mix the module with other files (fixtures, docs, scripts, plain Nix) |
+| `flake-parts/<concern>.nix` | Every file under an import-tree directory is a module; name it by what it defines (`packages.nix`, `overlays.nix`, `compositions.nix`). No entry file and no import list |
+| `flakeModules/<name>.nix` | A module this flake exports as `flakeModules.<name>` |
+
+Pick by how the directory is loaded: a directory of modules only gets
+import-tree; a directory where import-tree would also pull in non-module
+`.nix` files (dev fixtures, test data, `lib/`) gets a `flake-module.nix`
+and explicit imports.
+
+Never name a flake-parts module `module.nix` (it does not say which
+module system) or `default.nix`: `default.nix` is reserved for plain Nix
+functions or attrsets imported by directory (`import ./lib {inherit
+lib;}`), and the org standard has no `default.nix` entry points. An
+existing `flake-parts/default.nix` in an import-tree directory is renamed
+by concern when its repo is next converged.
 
 ### Formatting
 
