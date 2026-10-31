@@ -67,6 +67,14 @@ before creating a flake repo or touching a repo's partition wiring,
   `check`, `sync-locks`, `docs-build`, `docs`, `slides`; `devenv up`
   serves docs on :8981 and slides on :8982). `devenv.nix` adds the repo's languages, services and
   processes. No flake `devShells`, no `inputs.devenv.flakeModule`.
+- **Editor = nixd in every repo**: a committed `.vscode/settings.json`
+  (from the template) points nixd at the workspace flake itself
+  (`builtins.getFlake (builtins.toString ./.)`, never an absolute path):
+  nixpkgs from its own inputs, flake-parts options from `debug.options`
+  and `currentSystem.options` (`debug = true;` in `mkFlake`), NixOS
+  options, alejandra formatting. A repo with its own module system
+  overrides `options` in its copy. nixd and alejandra come from the org
+  devenv shell. See [nixd settings](references/flake-standard.md#nixd-settings).
 - **Docs and slides in every repo**: `documentation/module.nix` imports
   `inputs.presenting.flakeModules.default` (the `mkdocs-reveal` skill),
   from the dev partition only. `nix build .#documentation` builds the
@@ -307,6 +315,9 @@ source by hand. The rules you will meet:
 Run it on its own with
 `nix run nixpkgs#nixf-diagnose -- $(git ls-files '*.nix')`. Treat an
 editor squiggle in a `.nix` file as a CI failure waiting to happen.
+nixd reads its settings from the repo's `.vscode/settings.json` (org
+flake standard); `diagnostic.suppress` there must stay empty, so the
+editor and CI agree.
 
 ### Agent-enforced conventions
 
