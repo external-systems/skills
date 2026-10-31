@@ -141,36 +141,30 @@ for the linter.
 ### Nesting in JSON and other config files
 
 The same nesting rule applies to config files written by hand next to
-the Nix code, JSON first: never repeat a top-level (or any) key prefix
-across siblings. Where a tool reads dotted keys as paths (VS Code
-`settings.json`, `.vscode/*`), write one nested object per shared
-prefix instead of several dotted keys:
+the Nix code, JSON first: never repeat a key prefix across siblings
+when the keys are paths into one object; write the shared prefix once
+as a nested object.
+
+One exception: VS Code `settings.json` (and `.code-workspace`
+settings). Its top-level keys are setting IDs, not paths: VS Code's
+schema knows `nix.serverPath`, not a `nix` object, so a nested `"nix":
+{...}` shows "Unknown Configuration Setting", hides typos and drops out
+of the Settings UI. Write those IDs dotted, and nest only inside a
+setting's own object value:
 
 ```json
-// good: one "nix" object
 {
-  "nix": {
-    "enableLanguageServer": true,
-    "serverPath": "nixd",
-    "serverSettings": {"nixd": {"formatting": {"command": ["alejandra"]}}}
+  "nix.enableLanguageServer": true,
+  "nix.serverPath": "nixd",
+  "nix.serverSettings": {
+    "nixd": {"formatting": {"command": ["alejandra"]}}
   }
 }
 ```
 
-```json
-// bad: "nix." repeated across three top-level keys
-{
-  "nix.enableLanguageServer": true,
-  "nix.serverPath": "nixd",
-  "nix.serverSettings": {"nixd": {}}
-}
-```
-
-A single member may stay dotted (`"editor.formatOnSave": true`), as in
-Nix. Keys whose dots are literal, not paths (`"[nix]"` language blocks,
-schema URLs, file globs, JSON consumed by tools that do not split on
-dots), stay as written: never split those. Generated JSON
-(`flake.lock`, `devenv.lock`, `package-lock.json`) is never edited.
+Keys whose dots are literal (`"[nix]"` language blocks, schema URLs,
+file globs) also stay as written. Generated JSON (`flake.lock`,
+`devenv.lock`, `package-lock.json`) is never edited.
 
 ### Attribute keys and quoting
 
@@ -379,7 +373,7 @@ What is convention the agent must enforce itself (CI cannot see it):
 
 - quoting rule — no quotes on identifier keys
 - 2+-member nesting (statix needs 3+ adjacent repeats)
-- the same nesting in hand-written JSON (`.vscode/settings.json`, ...)
+- the same nesting in hand-written JSON (VS Code setting IDs stay dotted)
 - inherit consolidation
 - `relativeToRoot` for repo-root paths
 - `enabled` preference

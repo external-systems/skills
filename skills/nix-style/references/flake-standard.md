@@ -225,32 +225,30 @@ Every repo commits `.vscode/settings.json` from the template and sets
 `debug = true;` in `mkFlake` (exposes `debug.options` and
 `currentSystem.options`; lazy, consumers never evaluate them). nixd
 evaluates `./.` from the workspace root, so one file fits every clone.
-Settings nest under one `nix` key (VS Code reads nested objects the
-same as dotted keys), following the attribute-nesting rule:
+Top-level keys are VS Code setting IDs (`nix.serverPath`), written
+dotted: see the JSON nesting exception in SKILL.md.
 
 ```json
 {
-  "nix": {
-    "enableLanguageServer": true,
-    "serverPath": "nixd",
-    "serverSettings": {
-      "nixd": {
-        "nixpkgs": {
-          "expr": "import (builtins.getFlake (builtins.toString ./.)).inputs.nixpkgs { }"
+  "nix.enableLanguageServer": true,
+  "nix.serverPath": "nixd",
+  "nix.serverSettings": {
+    "nixd": {
+      "nixpkgs": {
+        "expr": "import (builtins.getFlake (builtins.toString ./.)).inputs.nixpkgs { }"
+      },
+      "formatting": {
+        "command": ["alejandra", "--quiet"]
+      },
+      "options": {
+        "flake-parts": {
+          "expr": "(builtins.getFlake (builtins.toString ./.)).debug.options"
         },
-        "formatting": {
-          "command": ["alejandra", "--quiet"]
+        "flake-parts-perSystem": {
+          "expr": "(builtins.getFlake (builtins.toString ./.)).currentSystem.options"
         },
-        "options": {
-          "flake-parts": {
-            "expr": "(builtins.getFlake (builtins.toString ./.)).debug.options"
-          },
-          "flake-parts-perSystem": {
-            "expr": "(builtins.getFlake (builtins.toString ./.)).currentSystem.options"
-          },
-          "nixos": {
-            "expr": "((builtins.getFlake (builtins.toString ./.)).inputs.nixpkgs.lib.nixosSystem { modules = [ { nixpkgs.hostPlatform = builtins.currentSystem; } ]; }).options"
-          }
+        "nixos": {
+          "expr": "((builtins.getFlake (builtins.toString ./.)).inputs.nixpkgs.lib.nixosSystem { modules = [ { nixpkgs.hostPlatform = builtins.currentSystem; } ]; }).options"
         }
       }
     }
