@@ -40,12 +40,20 @@ inputs.presenting = {
   # Nested `inputs = {...}` on purpose: three or more flat
   # `inputs.<x>.follows` lines trip statix's repeated-keys lint (W20).
   inputs = {
-    nixpkgs.follows = "nixpkgs";
-    flake-parts.follows = "flake-parts";
+    # presenting takes nixpkgs + flake-parts from its org-pkgs input.
+    org-pkgs.inputs = {
+      nixpkgs.follows = "nixpkgs";
+      flake-parts.follows = "flake-parts";
+    };
     mkdocs-flake.follows = "mkdocs-flake";  # only if you already have it
   };
 };
 ```
+
+In an org `dev/flake.nix` that is one line,
+`inputs.org-pkgs.inputs.nixpkgs.follows = "dev-nixpkgs";`, which leaves
+a single nixpkgs in `dev/flake.lock`. A flake that already has an
+`org-pkgs` input can instead write `inputs.org-pkgs.follows = "org-pkgs";`.
 
 The `follows` lines deduplicate the dependency graph onto the consumer's
 own pins. reveal.js itself needs no input and no follows — its pin
