@@ -36,8 +36,10 @@ dev/flake-module.nix        the dev partition
 devenv.yaml / devenv.lock   the shell: org-pkgs input, nixpkgs follows
                             org-pkgs/nixpkgs, imports org-pkgs/devenv
 devenv.nix                  this repo's languages, services, processes
-documentation/              mkdocs.yml, docs/, slides/, module.nix
+documentation/              mkdocs.yml, docs/, slides/, flake-module.nix
 AGENTS.md, README.md, .gitignore (result*, .devenv*, devenv.local.nix)
+.vscode/settings.json       nixd settings (below); extensions.json
+                            recommends jnoortheen.nix-ide
 ```
 
 ## flake.nix
@@ -129,7 +131,7 @@ because clan-core and kubenix follow it).
 {inputs, ...}: {
   imports = [
     inputs.org-pkgs.flakeModules.dev
-    ../documentation/module.nix
+    ../documentation/flake-module.nix
   ];
   # repo checks and maintainer apps go here (or in modules imported here)
 }
@@ -174,7 +176,7 @@ Rules:
 - Activation: `devenv hook <shell>` once per machine in the shell rc, then
   `devenv allow` once per checkout.
 
-## documentation/module.nix
+## documentation/flake-module.nix
 
 ```nix
 {inputs, ...}: {
@@ -217,6 +219,60 @@ sessions.
 
 Deck format, embedding and GitHub Pages: the `mkdocs-reveal` skill.
 
+## nixd settings
+
+Every repo commits `.vscode/settings.json` from the template and sets
+`debug = true;` in `mkFlake` (exposes `debug.options` and
+`currentSystem.options`; lazy, consumers never evaluate them). nixd
+evaluates `./.` from the workspace root, so one file fits every clone.
+Top-level keys are VS Code setting IDs (`nix.serverPath`), written
+dotted: see the JSON nesting exception in SKILL.md.
+
+```json
+{
+  "nix.enableLanguageServer": true,
+  "nix.serverPath": "nixd",
+  "nix.serverSettings": {
+    "nixd": {
+      "nixpkgs": {
+        "expr": "import (builtins.getFlake (builtins.toString ./.)).inputs.nixpkgs { }"
+      },
+      "formatting": {
+        "command": ["alejandra", "--quiet"]
+      },
+      "options": {
+        "flake-parts": {
+          "expr": "(builtins.getFlake (builtins.toString ./.)).debug.options"
+        },
+        "flake-parts-perSystem": {
+          "expr": "(builtins.getFlake (builtins.toString ./.)).currentSystem.options"
+        },
+        "nixos": {
+          "expr": "((builtins.getFlake (builtins.toString ./.)).inputs.nixpkgs.lib.nixosSystem { modules = [ { nixpkgs.hostPlatform = builtins.currentSystem; } ]; }).options"
+        }
+      }
+    }
+  }
+}
+```
+
+Override `options` where the repo has its own option namespace:
+
+- Modules repo: `nixos` evaluates `f.nixosModules.default` plus
+  `./dev/clan-stub.nix` (a module that reads `clan.core` fails the whole
+  option set otherwise); `home-manager` evaluates
+  `f.inputs.home-manager.lib.homeManagerConfiguration` with
+  `f.homeModules.default` and plasma-manager.
+- Machine repos: `f.nixosConfigurations.<name>.options`, and
+  `.options.home-manager.users.type.getSubOptions []` for home-manager.
+
+Test an expression before committing it:
+`nix eval --impure --expr 'builtins.attrNames (<expr>)'` from the repo
+root. `nixd` (org shell `languages.nix.enable`, which also adds statix and deadnix) and `alejandra` are on PATH in the devenv shell; start the
+editor from it (or install them per user, as `homeModules.vscode`
+does). Never set `diagnostic.suppress`: nixf findings fail
+`checks.treefmt`.
+
 ## Three lockfiles, one nixpkgs
 
 `flake.lock`, `dev/flake.lock` and `devenv.lock` must resolve nixpkgs to
@@ -238,7 +294,9 @@ to move nixpkgs.
 3. `nix flake lock && nix flake lock ./dev && devenv update`, then
    `nix run .#sync-locks`.
 4. `devenv allow`, then `fmt`, `check`, `devenv test`, `docs-build`.
-5. Confirm the main lock is clean: `jq '.nodes | keys' flake.lock` lists
+5. Open the repo in VS Code from the shell and check that nixd hints
+   (hover a flake-parts option) work.
+6. Confirm the main lock is clean: `jq '.nodes | keys' flake.lock` lists
    no treefmt-nix, devenv, presenting or mkdocs-flake.
 
 ## Procedure: converge an existing repo
@@ -264,4 +322,8 @@ to move nixpkgs.
    `inputs.org-pkgs.*` references) and run `nix flake lock`; downstream
    flakes that override it (`<repo>.inputs.pkgs.follows`) must switch to
    `<repo>.inputs.org-pkgs.follows`.
-8. In the PR body, list which inputs left the main lock.
+8. Copy the template's `.vscode/` and add `debug = true;` to `mkFlake`;
+   replace absolute `/home/...` paths in an existing
+   `.vscode/settings.json` with `builtins.toString ./.` (see
+   [nixd settings](#nixd-settings)).
+9. In the PR body, list which inputs left the main lock.

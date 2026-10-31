@@ -1,6 +1,6 @@
 ---
 name: nix-style
-description: "Nix code style, tool loop and the org flake standard (user preferences): attribute nesting/quoting/inherit rules, module-system and repo-root-path conventions, treefmt (alejandra, deadnix, statix, nixf-diagnose, shellcheck, sizelint) via external-systems/pkgs flakeModules, the devenv CLI shell (devenv.yaml importing org-pkgs/devenv), the dev flake-parts partition holding checks, formatter and MkDocs/reveal.js docs with its own dev/flake.lock, lock sync, the pkgs repo template, and the flake-repo agent contract. Use when writing or editing any .nix file, creating a new flake repo, or adding a formatter, linter, dev shell or docs to one."
+description: "Nix code style, tool loop and the org flake standard (user preferences): attribute nesting/quoting/inherit rules, module-system and repo-root-path conventions, treefmt (alejandra, deadnix, statix, nixf-diagnose — the nixd editor diagnostics — shellcheck, sizelint) via external-systems/pkgs flakeModules, the devenv CLI shell (devenv.yaml importing org-pkgs/devenv), the dev flake-parts partition holding checks, formatter and MkDocs/reveal.js docs with its own dev/flake.lock, lock sync, the pkgs repo template, and the flake-repo agent contract. Use when writing or editing any .nix file, creating a new flake repo, or adding a formatter, linter, dev shell or docs to one."
 ---
 
 # nix-style — Nix code style and tool loop
@@ -67,7 +67,15 @@ before creating a flake repo or touching a repo's partition wiring,
   `check`, `sync-locks`, `docs-build`, `docs`, `slides`; `devenv up`
   serves docs on :8981 and slides on :8982). `devenv.nix` adds the repo's languages, services and
   processes. No flake `devShells`, no `inputs.devenv.flakeModule`.
-- **Docs and slides in every repo**: `documentation/module.nix` imports
+- **Editor = nixd in every repo**: a committed `.vscode/settings.json`
+  (from the template) points nixd at the workspace flake itself
+  (`builtins.getFlake (builtins.toString ./.)`, never an absolute path):
+  nixpkgs from its own inputs, flake-parts options from `debug.options`
+  and `currentSystem.options` (`debug = true;` in `mkFlake`), NixOS
+  options, alejandra formatting. A repo with its own module system
+  overrides `options` in its copy. nixd comes from the org devenv shell
+  (`languages.nix.enable`), alejandra from its packages. See [nixd settings](references/flake-standard.md#nixd-settings).
+- **Docs and slides in every repo**: `documentation/flake-module.nix` imports
   `inputs.presenting.flakeModules.default` (the `mkdocs-reveal` skill),
   from the dev partition only. `nix build .#documentation` builds the
   static site (via `legacyPackages`, partitioned to `dev`); open
@@ -129,6 +137,34 @@ statix's `repeated_keys` lint only fires on 3+ adjacent repeats; this rule
 is stricter — 2+ assignments of the same prefix in one attrset are a
 violation, adjacency irrelevant. Enforce it while writing, not by waiting
 for the linter.
+
+### Nesting in JSON and other config files
+
+The same nesting rule applies to config files written by hand next to
+the Nix code, JSON first: never repeat a key prefix across siblings
+when the keys are paths into one object; write the shared prefix once
+as a nested object.
+
+One exception: VS Code `settings.json` (and `.code-workspace`
+settings). Its top-level keys are setting IDs, not paths: VS Code's
+schema knows `nix.serverPath`, not a `nix` object, so a nested `"nix":
+{...}` shows "Unknown Configuration Setting", hides typos and drops out
+of the Settings UI. Write those IDs dotted, and nest only inside a
+setting's own object value:
+
+```json
+{
+  "nix.enableLanguageServer": true,
+  "nix.serverPath": "nixd",
+  "nix.serverSettings": {
+    "nixd": {"formatting": {"command": ["alejandra"]}}
+  }
+}
+```
+
+Keys whose dots are literal (`"[nix]"` language blocks, schema URLs,
+file globs) also stay as written. Generated JSON (`flake.lock`,
+`devenv.lock`, `package-lock.json`) is never edited.
 
 ### Attribute keys and quoting
 
@@ -248,11 +284,32 @@ eval channel, so the helper is always safe there.
   (flake-parts + import-tree style: new files are auto-loaded, there is
   no import list to update) — see the `import-tree` skill.
 
+### Flake-parts module file names
+
+| File | Use |
+|---|---|
+| `<dir>/flake-module.nix` | The flake-parts module that is a directory's entry point, imported by explicit path (`./dev/flake-module.nix`, `../documentation/flake-module.nix`). Use it for directories that mix the module with other files (fixtures, docs, scripts, plain Nix) |
+| `flake-parts/<concern>.nix` | Every file under an import-tree directory is a module; name it by what it defines (`packages.nix`, `overlays.nix`, `compositions.nix`). No entry file and no import list |
+| `flakeModules/<name>.nix` | A module this flake exports as `flakeModules.<name>` |
+
+Pick by how the directory is loaded: a directory of modules only gets
+import-tree; a directory where import-tree would also pull in non-module
+`.nix` files (dev fixtures, test data, `lib/`) gets a `flake-module.nix`
+and explicit imports.
+
+Never name a flake-parts module `module.nix` (it does not say which
+module system) or `default.nix`: `default.nix` is reserved for plain Nix
+functions or attrsets imported by directory (`import ./lib {inherit
+lib;}`), and the org standard has no `default.nix` entry points. An
+existing `flake-parts/default.nix` in an import-tree directory is renamed
+by concern when its repo is next converged.
+
 ### Formatting
 
 treefmt is the formatter (`nix fmt`, from `flakeModules.treefmt`). It
 runs alejandra (layout), deadnix (`no-lambda-pattern-names`), statix,
-nixf-diagnose, shellcheck and sizelint in one pass. alejandra owns the
+nixf-diagnose (every rule, report only), shellcheck and sizelint in one
+pass. alejandra owns the
 layout: never hand-format Nix, never fight its choices, never merge
 conflict over whitespace. After every edit:
 
@@ -274,14 +331,49 @@ What CI automates (`checks.treefmt`, built by `nix flake check`):
 | alejandra | formatting |
 | deadnix | unused bindings (lambda pattern names are tolerated) |
 | statix | anti-patterns, incl. `repeated_keys` (3+ adjacent) and `manual_inherit*` |
-| nixf-diagnose | removed `builtins` primop prefixes |
+| nixf-diagnose | every nixf rule — the same diagnostics nixd shows in the editor (see below) |
 | shellcheck | shell scripts |
 | sizelint | oversized files |
+
+### nixf-diagnose and the editor
+
+nixf is the Nix parser and semantic analyser inside nixd, the Nix
+language server. VS Code (the Nix IDE extension with nixd) underlines
+nixf's diagnostics as you type; `nixf-diagnose` is the CLI wrapper
+around the same engine (`nixf-tidy`), so `nix fmt` and `checks.treefmt`
+fail on exactly what the editor shows. Every rule runs (no `only`, no
+`ignore`) with variable lookup on; fixes are not applied automatically
+(`autoFix = false`), because nixf's fixes rename or delete code. Fix the
+source by hand. The rules you will meet:
+
+| ID | Fix |
+|---|---|
+| `sema-primop-overridden` | a binding shadows a prelude builtin (`placeholder`, `toString`, `map`, `import`, ...): rename it (`isPlaceholder`) |
+| `sema-constant-overridden` | a binding shadows `true`/`false`/`null`: rename it |
+| `sema-primop-removed-prefix` | `builtins.baseNameOf` → `baseNameOf`: drop the prefix on prelude builtins |
+| `sema-primop-needs-prefix`, `sema-primop-unknown` | add `builtins.`, or fix the name |
+| `sema-unused-def-let` | unused `let` binding: delete it |
+| `sema-unused-def-lambda-noarg-formal`, `-witharg-formal`, `-witharg-arg` | unused `{config, ...}:` formal or `args@`: delete it (stricter than deadnix's `no-lambda-pattern-names`; nixf wins) |
+| `sema-extra-rec` | `rec { }` with no self-reference: drop `rec` |
+| `sema-extra-with` | `with x;` whose names are never used: drop it |
+| `sema-undefined-variable` | a name not in scope: bind it or fix the typo |
+| `sema-duplicated-attrname`, `sema-dup-formal*` | the same key or formal twice: merge them |
+| `parse-*`, `lex-*` | syntax: `parse-redundant-paren` means drop the parentheses |
+
+Run it on its own with
+`nix run nixpkgs#nixf-diagnose -- $(git ls-files '*.nix')`. Treat an
+editor squiggle in a `.nix` file as a CI failure waiting to happen.
+nixd reads its settings from the repo's `.vscode/settings.json` (org
+flake standard); `diagnostic.suppress` there must stay empty, so the
+editor and CI agree.
+
+### Agent-enforced conventions
 
 What is convention the agent must enforce itself (CI cannot see it):
 
 - quoting rule — no quotes on identifier keys
 - 2+-member nesting (statix needs 3+ adjacent repeats)
+- the same nesting in hand-written JSON (VS Code setting IDs stay dotted)
 - inherit consolidation
 - `relativeToRoot` for repo-root paths
 - `enabled` preference
