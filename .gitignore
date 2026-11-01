@@ -2,3 +2,6 @@ result
 result-*
 .devenv*
 devenv.local.nix
+site/
+_site/
+documentation/site/
