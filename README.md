@@ -67,7 +67,7 @@ verify the installed set after changing a selection.
 Every source lives here as an input; consumers never add `skills-*`
 inputs of their own. Each home-manager user gets the `base` preset (the
 `core` group: baton-pass, clan-core, devenv, flakeparts, import-tree,
-mkdocs-reveal, nix-style, skills-repo) and picks extras in their profile (the agents
+mkdocs-reveal, nix-style, org-repos, skills-repo) and picks extras in their profile (the agents
 module lives in external-systems/modules). List own groups before
 external sources so own skills keep winning name collisions:
 
@@ -177,6 +177,11 @@ Workflow / behavior skills:
   pointer, auto-gitignored) so a different agent or model can resume
   where the session stopped, or resume from an existing handoff.
   Language- and repo-agnostic.
+
+- `org-repos` — map of the external-systems org: what home, pkgs,
+  modules, skills, secrets, not-secrets, clanServices and presenting
+  each own, which flake consumes which, the `~/external-systems/<repo>`
+  clone layout, and the order to bump inputs across repos.
 
 - `skills-repo` — how this repo, external-systems/modules and
   external-systems/home ship skills: writing an own skill, importing an
