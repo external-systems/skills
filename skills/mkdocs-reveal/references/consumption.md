@@ -96,6 +96,18 @@ store is read-only, hence the copy), `upload-pages-artifact` +
 `deploy-pages`. Copy it unchanged; the only per-repo setup is Settings →
 Pages → Source: GitHub Actions.
 
+The `_site` copy exists only inside the CI runner. Never commit it, or
+`result`, `site/` or any other build output, and never push a `gh-pages`
+branch: CI is the only publisher. Gitignore those paths in the consumer:
+
+```gitignore
+result
+result-*
+site/
+_site/
+documentation/site/
+```
+
 ## Without flake-parts: lib.mkSlides
 
 `inputs.presenting.lib.mkSlides` is the module's engine, usable from any
