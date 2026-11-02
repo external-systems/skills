@@ -67,7 +67,7 @@ verify the installed set after changing a selection.
 Every source lives here as an input; consumers never add `skills-*`
 inputs of their own. Each home-manager user gets the `base` preset (the
 `core` group: baton-pass, clan-core, devenv, flakeparts, import-tree,
-mkdocs-reveal, nix-style, org-repos, skills-repo) and picks extras in their profile (the agents
+mkdocs-reveal, nix-style, org-repos, remote-builder, skills-repo) and picks extras in their profile (the agents
 module lives in external-systems/modules). List own groups before
 external sources so own skills keep winning name collisions:
 
@@ -205,6 +205,9 @@ their description):
   generators, clan CLI, machine update flows, clanService VM tests.
 - `clanservices` — authoring clan.service modules in the official
   clan-core style.
+- `remote-builder` — using euc-hel-0 for distributed Nix builds and VM
+  tests, proving remote execution, forcing local builds, debugging SSH and
+  store failures, and testing the clanService.
 - `declarative-runtime` — NixOS service runtime state through paired
   OpenTofu providers: using and authoring pairings, readiness, secret files,
   clan vars integration, debugging, and scenario design.
