@@ -5,3 +5,4 @@ devenv.local.nix
 site/
 _site/
 documentation/site/
+.baton-pass/
