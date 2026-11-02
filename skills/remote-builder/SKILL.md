@@ -23,16 +23,19 @@ Run the repository's ordinary command:
 nix build .#<attr> -L
 ```
 
-The daemon can choose euc-hel-0 or the local machine. The builder advertises
-`x86_64-linux` and emulated `aarch64-linux`, 16 concurrent jobs, speed factor
-10, and the features `benchmark`, `big-parallel`, `kvm`, and `nixos-test`.
-Speed factor is a preference, not a guarantee that every build leaves the
-local machine. `aarch64-linux` uses emulation and can be slower than native
-x86_64 builds.
+Nix prefers a compatible remote builder by default and can fall back to the
+local machine when none is available. The builder advertises `x86_64-linux`
+and emulated `aarch64-linux`, 16 concurrent jobs, speed factor 10, and the
+features `benchmark`, `big-parallel`, `kvm`, and `nixos-test`. Speed factor
+ranks builders; it does not mandate remote placement. Derivations marked
+`preferLocalBuild` stay local when possible. `aarch64-linux` uses emulation
+and can be slower than native x86_64 builds.
 
 Keep substituters enabled for normal work. Both client and server use
 `builders-use-substitutes`, so the builder can fetch dependencies directly
-from binary caches instead of receiving them from the client.
+from binary caches instead of receiving them from the client. Results are
+copied back to the client. Treat the builder's store as a cache, not an
+archive: garbage collection can remove unreferenced outputs.
 
 ### Force one build to compile locally
 
@@ -76,11 +79,12 @@ Success requires a log line like:
 building '...drv' on 'ssh-ng://nix-ssh@euc-hel-0'...
 ```
 
-For a real package, `nix build --max-jobs 0 -L .#<attr>` forbids local
-compilation. Add `--option substituters ''` only when the test must compile
-rather than substitute, and make sure the output is not already built.
-Do not add `--rebuild` to the zero-local-jobs proof: on the deployed Nix
-version that combination can fail instead of dispatching the rebuild.
+For a real package, `nix build --max-jobs 0 -L .#<attr>` disables ordinary
+local compilation; `preferLocalBuild` derivations are the exception. Add
+`--option substituters ''` only when the test must compile rather than
+substitute, and make sure the output is not already built. Do not add
+`--rebuild` to the zero-local-jobs proof: on the deployed Nix version that
+combination can fail instead of dispatching the rebuild.
 
 ## NixOS VM tests and large builds
 
@@ -99,8 +103,9 @@ nix build .#<test-attr> -L
 A runner may perform its own nested `nix build`; flags given to `nix run`
 do not automatically become flags for that nested build. Use the runner's
 documented builder option when forcing placement, and check `-L` output
-when proof matters. Keep VM tests out of `checks` in org repos that follow
-the `vm-tests` convention.
+when proof matters. Driver or interactive mode runs the VMs on the invoking
+machine; use the sandboxed build for remote execution. Keep VM tests out of
+`checks` in org repos that follow the `vm-tests` convention.
 
 ## Debug from the client
 
@@ -120,6 +125,8 @@ execution, and result copying have different causes.
    The machine entry should name `euc-hel-0`, both Linux systems, 16 jobs,
    speed factor 10, and the four features above. The key path is expected
    to be root-only because nix-daemon, not the calling user, opens SSH.
+   When investigating an older incident, widen the journal time range;
+   `-b` covers only the current boot.
 3. Match the symptom to the next action:
 
 | Symptom | Meaning and response |
@@ -129,12 +136,13 @@ execution, and result copying have different causes.
 | `Permission denied (publickey)` | The client key is missing, unreadable by root, or not authorized on the server. Check vars presence and deployment state without printing either private half. A new client needs vars generation, then a server deploy to authorize its public key, then a client deploy. |
 | Connection timeout or refused | Check reachability and the server service. The configured alias fails after 5 seconds; with local jobs enabled Nix can fall back to local builds, while `--max-jobs 0` makes the failure explicit. |
 | Required feature or system has no builder | Compare the derivation's system and `requiredFeatures` with `/etc/nix/machines`. VM tests need `kvm` and `nixos-test`; cross-system builds depend on the advertised emulated system. |
-| Remote-only build failure | Inspect the `-L` remote build log and compare resources, emulation, and required features with a local run. A remote store connection succeeding does not prove the derivation itself can build. |
+| Remote-only build failure | Inspect the `-L` remote build log and compare resources, emulation, and required features with a local run. A started remote build that fails does not automatically retry locally; fix the cause or rerun deliberately. |
 
-`nix log --store ssh-ng://...` is not a supported debugging path for this
-setup. Use the client's build output and daemon journal. Never work around
-authentication by copying a client private key into a repository, command
-line, or user-writable location.
+Remote build logs are copied back, so local `nix log <drv>` can inspect a
+completed attempt. `nix log --store ssh-ng://...` is not a supported
+debugging path for this setup. Never work around authentication by copying
+a client private key into a repository, command line, or user-writable
+location.
 
 ## Test or change the clanService
 
@@ -155,6 +163,8 @@ nix flake check --show-trace
 ```
 
 The focused check runs all service eval tests, including remote-builder.
+When changing supported features or SSH timeouts, update their expected
+values in `eval-tests.nix`; those assertions are intentional drift guards.
 The service has no VM suite. Test inventory wiring separately in
 external-systems/home with its full `nix flake check`; home's current
 `remote-builder` instance assigns `server` to euc-hel-0 and `client` to the
@@ -168,8 +178,10 @@ server addresses in the values flake, never in this public skill.
 
 Outside clan clients, CI can use the instance's shared CI key and an explicit
 `--builders` entry or remote store. Only an operator should retrieve that
-private key; it is never deployed by the service. Treat every authorized key
-as root on the builder's store: `nix.sshServe` enables trusted writes.
+private key; it is never deployed by the service. Do not assume existing CI
+uses the builder: home's current GitHub Actions workflow runs on
+`ubuntu-latest` without it. Treat every authorized key as root on the
+builder's store: `nix.sshServe` enables trusted writes.
 
 ## Source of truth
 
