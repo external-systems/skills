@@ -100,10 +100,10 @@ with two or more members are written once and nested:
 {
   homeSpec = {
     programs = {
-      firefox.enabled = true;
-      spotify.enabled = true;
+      firefox.enable = true;
+      spotify.enable = true;
     };
-    shell.bash.enabled = true;
+    shell.bash.enable = true;
   };
 }
 
@@ -120,9 +120,9 @@ mcp = {
 ```nix
 # bad: quoted identifiers, repeated prefixes (quoted or not), mixed styles
 {
-  homeSpec."programs".firefox.enabled = true;
-  homeSpec."programs".spotify.enabled = true;
-  homeSpec.shell.bash.enabled = true;
+  homeSpec."programs".firefox.enable = true;
+  homeSpec."programs".spotify.enable = true;
+  homeSpec.shell.bash.enable = true;
 }
 
 mcp = {
@@ -197,11 +197,13 @@ style.
 
 ### Boolean toggles
 
-For boolean toggles you control (new options, new modules), prefer
-`setting.enabled = true` over `setting.enable = true` where possible.
-Not strictly enforced: standard NixOS and home-manager options are named
-`enable` (`mkEnableOption` generates `enable`), and existing options are
-never renamed for this — apply it where the naming is yours to choose.
+Name boolean toggles `enable`, never `enabled`: `setting.enable = true`.
+This matches standard NixOS and home-manager options and what
+`lib.mkEnableOption` is written for, so a host's `hostSpec`/`homeSpec`
+toggles read the same as the upstream options beside them. Apply it to
+every new option and module. Options that already shipped as `enabled`
+keep their name until a deliberate breaking-change rename; do not rename
+them in passing.
 
 ### inherit
 
@@ -376,7 +378,7 @@ What is convention the agent must enforce itself (CI cannot see it):
 - the same nesting in hand-written JSON (VS Code setting IDs stay dotted)
 - inherit consolidation
 - `relativeToRoot` for repo-root paths
-- `enabled` preference
+- `enable` (not `enabled`) for boolean toggles
 - the org flake standard (no dev-only input in the main lock)
 
 Fix violations in passing whenever you touch a file; write new code right
