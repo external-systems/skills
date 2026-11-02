@@ -1,0 +1,44 @@
+{
+  "skill_name": "remote-builder",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "On this org NixOS client, use our deployed remote builder to compile something and prove it really compiled remotely rather than coming from a cache or an existing local output. The hello package may already have been built here. Do not edit a repo or deploy anything. Save the exact commands, relevant log evidence, and a short conclusion.",
+      "expected_output": "A successful root store connectivity check and a fresh no-substitutes build with local jobs disabled, with explicit log evidence naming euc-hel-0 and no reliance on --rebuild.",
+      "files": [],
+      "expectations": [
+        "Checks the root nix-daemon connection with sudo nix store info --store ssh-ng://euc-hel-0",
+        "Uses a genuinely fresh derivation or otherwise proves the output was not already present",
+        "Disables local jobs with --max-jobs 0 and disables substituters for the proof",
+        "Provides actual build-log evidence naming ssh-ng://nix-ssh@euc-hel-0",
+        "Does not rely on the incompatible --rebuild plus zero-local-jobs combination and does not edit or deploy configuration"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "A package is misbehaving only when it builds on our remote builder. Give me a one-off command to build .#packages.x86_64-linux.example entirely locally, without permanently disabling the remote builder. Also explain the normal way to offload this repo's NixOS VM tests and why a build might legitimately stay local even when the builder is healthy.",
+      "expected_output": "A per-invocation empty builders override, normal scheduler and VM feature guidance, and no persistent configuration change or confusion with max-jobs 0.",
+      "files": [],
+      "expectations": [
+        "Uses --builders '' or an equivalent per-command empty builders setting to force local compilation",
+        "States that the override is temporary and does not edit persistent Nix configuration",
+        "Does not recommend --max-jobs 0 for forcing a local build",
+        "Mentions euc-hel-0's kvm and nixos-test features and use of the repo's normal VM-test runner or test derivation",
+        "Explains that Nix may schedule locally despite a healthy builder because speedFactor is a preference rather than mandatory remote placement"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "After euc-hel-0 was reinstalled, my client's nix-daemon logs say Host key verification failed. Show me a safe debugging path that does not weaken SSH host-key checking or expose keys. I also changed the remote-builder clanService's supportedFeatures and SSH timeout; which exact tests should I run before asking a human to deploy?",
+      "expected_output": "Root/daemon diagnostics, source-and-vars based host-key repair without bypasses, the focused nix-unit check and full clanServices and home checks, and no agent deploy.",
+      "files": [],
+      "expectations": [
+        "Includes -L build output, /etc/nix/machines, root store info, and nix-daemon journal diagnostics without printing private keys",
+        "Attributes the likely host-key failure to stale pinned trust after reinstall and requires verifying current public key material and source generations",
+        "Explicitly avoids disabling host-key checking, deleting the mismatch as a fix, or recommending unsupported nix log over ssh-ng",
+        "Runs or prescribes nix fmt, nix build .#checks.x86_64-linux.nix-unit -L, and nix flake check --show-trace in clanServices",
+        "Checks home inventory integration and leaves vars generation and deployment to a human in the correct server-before-new-client order"
+      ]
+    }
+  ]
+}
