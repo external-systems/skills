@@ -1,6 +1,6 @@
 ---
 name: nix-style
-description: "Nix code style, tool loop and the org flake standard (user preferences): attribute nesting/quoting/inherit rules, module-system and repo-root-path conventions, treefmt (alejandra, deadnix, statix, nixf-diagnose — the nixd editor diagnostics — shellcheck, sizelint) via external-systems/pkgs flakeModules, the devenv CLI shell (devenv.yaml importing org-pkgs/devenv), the dev flake-parts partition holding checks, formatter and MkDocs/reveal.js docs with its own dev/flake.lock, lock sync, the pkgs repo template, the org CI (ci.yml calling pkgs org-ci.yml, the default ruleset, Pages, releases), and the flake-repo agent contract. Use when writing or editing any .nix file, creating a new flake repo, or adding a formatter, linter, dev shell or docs to one."
+description: "Nix code style, tool loop and the org flake standard (user preferences): attribute nesting/quoting/inherit rules, module-system and repo-root-path conventions, treefmt (alejandra, deadnix, statix, nixf-diagnose — the nixd editor diagnostics — shellcheck, sizelint) via external-systems/pkgs flakeModules, the devenv CLI shell (devenv.yaml importing org-pkgs/devenv), one org-pkgs input whose flakeModules.dev brings formatter, checks and MkDocs/reveal.js docs (no dev partition, no dev/flake.lock), lock sync, the pkgs repo template, the org CI (ci.yml calling pkgs org-ci.yml, the default ruleset, Pages, releases), and the flake-repo agent contract. Use when writing or editing any .nix file, creating a new flake repo, or adding a formatter, linter, dev shell or docs to one."
 ---
 
 # nix-style — Nix code style and tool loop
@@ -24,11 +24,11 @@ one. Repo-specific facts live in each repo's `AGENTS.md`.
   come from a provisioning layer (sops-nix, clan vars, CI OIDC, GitHub
   Actions secrets), never from expressions — clan vars are documented in
   the `clan-core` skill.
-- Every flake repo follows the org flake standard: inputs follow
-  external-systems/pkgs, and checks, formatter, devShells and apps live
-  in a `dev` flake-parts partition with its own `dev/flake.nix` and
-  `dev/flake.lock`, so treefmt-nix, devenv and docs inputs never reach
-  the main `flake.lock`. See [Org flake standard](#org-flake-standard).
+- Every flake repo follows the org flake standard: one `org-pkgs` input
+  (nixpkgs, flake-parts, import-tree follow it) whose
+  `flakeModules.dev` brings the formatter, checks, docs and slides. No
+  dev-only inputs, no `dev/flake.nix`, no dev partition. See
+  [Org flake standard](#org-flake-standard).
 - Every repo is a flake with docs and runs the org CI: a `ci.yml`
   copied from pkgs that calls `org-ci.yml`, never per-repo workflow
   logic. See [Org CI](#org-ci).
@@ -53,16 +53,17 @@ before creating a flake repo or touching a repo's partition wiring,
   The input is never named `pkgs` (in `flake.nix` or `devenv.yaml`):
   `pkgs` always means the nixpkgs package set. Every
   other input follows them where it can.
-- **Partition**: `partitionedAttrs` sends `apps`, `checks` and
-  `formatter` to `dev`; `partitions.dev = {module =
-  ./dev/flake-module.nix; extraInputsFlake = ./dev;}`. `packages` stay at
-  the root.
-- **Dev inputs** (`dev/flake.nix`, locked in `dev/flake.lock`):
-  `dev-nixpkgs`, `treefmt-nix`, `presenting`, and any test-only inputs.
-- **Shared flake module**: the dev partition imports
-  `inputs.org-pkgs.flakeModules.dev` (org linters via treefmt,
-  `checks.lock-sync`, `apps.sync-locks`, docs and slides as checks).
-  Never copy the treefmt program list into a repo.
+- **Shared flake module**: `flake.nix` imports
+  `inputs.org-pkgs.flakeModules.dev` (org linters via treefmt, docs and
+  slides via `flakeModules.docs`, `checks.lock-sync`, `apps.sync-locks`,
+  docs and slides as checks). It is bound to pkgs' own `treefmt-nix` and
+  `reveal-js` inputs, so the repo declares none. Never copy the treefmt
+  program list or the docs module into a repo.
+- **No dev partition**: every dev tool comes from org-pkgs, which every
+  repo already locks, so a separate dev lock would protect nobody. Only
+  pkgs keeps one (its code-agent image needs external-systems/modules,
+  which depends on pkgs). A repo needing a heavy test-only input asks
+  first.
 - **Dev shell = devenv CLI only**: `devenv.yaml` takes `org-pkgs`
   (devenv would let an input named `pkgs` shadow nixpkgs' `pkgs`),
   follows `org-pkgs/nixpkgs`, and imports `org-pkgs/devenv`
@@ -78,14 +79,13 @@ before creating a flake repo or touching a repo's partition wiring,
   options, alejandra formatting. A repo with its own module system
   overrides `options` in its copy. nixd comes from the org devenv shell
   (`languages.nix.enable`), alejandra from its packages. See [nixd settings](references/flake-standard.md#nixd-settings).
-- **Docs and slides in every repo**: `documentation/flake-module.nix` imports
-  `inputs.presenting.flakeModules.default` (the `mkdocs-reveal` skill),
-  from the dev partition only. `nix build .#documentation` builds the
-  static site (via `legacyPackages`, partitioned to `dev`); open
-  `result/index.html` from disk.
-- **One nixpkgs across three locks**: `flake.lock`, `dev/flake.lock`,
-  `devenv.lock`. After `nix flake update org-pkgs`, run `sync-locks` in the
-  same commit.
+- **Docs and slides in every repo**: `documentation/docs/*.md` and
+  `documentation/slides/slides.md`, no Nix needed; settings that differ
+  go in `perSystem.docs` (`flake-parts/docs.nix`; the `mkdocs-reveal`
+  skill). `nix build .#documentation` builds the static site; open
+  `result/index.html` from disk. external-systems/presenting is retired.
+- **One nixpkgs across two locks**: `flake.lock`, `devenv.lock`. After
+  `nix flake update org-pkgs`, run `sync-locks` in the same commit.
 
 A repo that does not match yet still gets the style rules below; offer to
 converge it rather than doing it unasked.
@@ -329,7 +329,7 @@ eval channel, so the helper is always safe there.
 
 | File | Use |
 |---|---|
-| `<dir>/flake-module.nix` | The flake-parts module that is a directory's entry point, imported by explicit path (`./dev/flake-module.nix`, `../documentation/flake-module.nix`). Use it for directories that mix the module with other files (fixtures, docs, scripts, plain Nix) |
+| `<dir>/flake-module.nix` | The flake-parts module that is a directory's entry point, imported by explicit path (`./images/code-agent/flake-module.nix`). Use it for directories that mix the module with other files (fixtures, docs, scripts, plain Nix) |
 | `flake-parts/<concern>.nix` | Every file under an import-tree directory is a module; name it by what it defines (`packages.nix`, `overlays.nix`, `compositions.nix`). No entry file and no import list |
 | `flakeModules/<name>.nix` | A module this flake exports as `flakeModules.<name>` |
 
@@ -418,7 +418,7 @@ What is convention the agent must enforce itself (CI cannot see it):
 - inherit consolidation
 - `relativeToRoot` for repo-root paths
 - `enable` (not `enabled`) for boolean toggles
-- the org flake standard (no dev-only input in the main lock)
+- the org flake standard (one org-pkgs input, no dev partition, no dev-only inputs)
 
 Fix violations in passing whenever you touch a file; write new code right
 the first time. When a rule and a linter disagree, the rule wins — and if

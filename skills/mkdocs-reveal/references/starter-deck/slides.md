@@ -24,7 +24,7 @@ Vertical slides hold detail the impatient can skip.
 ## Code
 
 ```nix
-presenting.slides.dir = ./slides;
+docs.slides.theme = "white";
 ```
 
 ---

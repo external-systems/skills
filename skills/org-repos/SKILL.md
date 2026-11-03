@@ -1,6 +1,6 @@
 ---
 name: org-repos
-description: "Map of the owner's external-systems GitHub org: which repo owns what (home, pkgs, modules, skills, secrets, not-secrets, clanServices, presenting), which flake consumes which, where clones live on disk (~/external-systems/REPO), and which repo a change belongs in. Load when asked how the repos fit together, where a package, module, skill, IP address or clan service should go, which repo to edit or open a PR in, how to test a change across repos, or in what order to bump flake inputs after a change."
+description: "Map of the owner's external-systems GitHub org: which repo owns what (home, pkgs, modules, skills, secrets, not-secrets, clanServices; presenting is retired), which flake consumes which, where clones live on disk (~/external-systems/REPO), and which repo a change belongs in. Load when asked how the repos fit together, where a package, module, skill, IP address or clan service should go, which repo to edit or open a PR in, how to test a change across repos, or in what order to bump flake inputs after a change."
 ---
 
 # org-repos
@@ -20,7 +20,7 @@ Every org repo is cloned into the user's home directory under
 ~/external-systems/home          ~/external-systems/modules
 ~/external-systems/pkgs          ~/external-systems/skills
 ~/external-systems/secrets       ~/external-systems/not-secrets
-~/external-systems/clanServices  ~/external-systems/presenting
+~/external-systems/clanServices  ~/external-systems/presenting (retired)
 ```
 
 Note the capital S in `clanServices`. Look there before cloning anything.
@@ -34,22 +34,21 @@ somewhere else, so check the working directory first.
 ```
                      external-systems/pkgs  (input name: org-pkgs)
           nixpkgs + flake-parts + import-tree, overlays, packages,
-          flakeModules.dev, the devenv shell, the repo template
+          flakeModules.dev (treefmt, docs + slides), the devenv
+          shell, the repo template
       _________________________|______________________________
-     |            |               |              |            |
- presenting    skills        not-secrets    clanServices   (every repo's
- docs+slides   agent skills  schema +       clan services   dev partition
-     |            |          placeholders   (input: pkgs)   and devenv)
-     |            v               |              :
-     |         modules            v              :
-     |         NixOS + hm      secrets           :  planned
-     |         modules         real values       :
-     |            |               |              :
-     |            v               v              v
-     |         ===========  external-systems/home  ===========
-     |              clan machines, inventory, users, deploys
-     |
-     +--> every repo's dev partition (packages.documentation, slides)
+     |               |              |            |
+  skills        not-secrets    clanServices   (every repo's
+  agent skills  schema +       clan services   flake.nix and
+     |          placeholders   (input: pkgs)   devenv)
+     v               |              :
+  modules            v              :
+  NixOS + hm      secrets           :  planned
+  modules         real values       :
+     |               |              :
+     v               v              v
+  ===========  external-systems/home  ===========
+       clan machines, inventory, users, deploys
 ```
 
 Solid lines are flake inputs. A repo never imports something below it in
@@ -61,13 +60,13 @@ users or IPs, and only home names machines.
 | Repo | Owns | Never holds |
 |---|---|---|
 | **home** | The clan: `inventory.nix`, `machines/<name>/`, users and their home-manager profiles, home-only clan services (`clanServices/` dir: machine-type, tags, remote-builder), `sops/` and `vars/`. Deploys run from here. Public. | Packages, overlays, reusable modules, skills, IP literals |
-| **pkgs** | The shared-input authority: the single nixpkgs, flake-parts and import-tree every repo follows. Packages and `overlays.{default,kubernetes,ifstate,tools}` (Kubernetes distros, IfState, Cilium manifests and airgap images, workstation and agent tools), the code-agent sandbox image, `flakeModules.dev` (treefmt, `lock-sync`, docs as checks), the org devenv shell (`org-pkgs/devenv`) and `nix flake init -t github:external-systems/pkgs`. | Inventory, clan vars, fleet policy |
+| **pkgs** | The shared-input authority: the single nixpkgs, flake-parts and import-tree every repo follows. Packages and `overlays.{default,kubernetes,ifstate,tools}` (Kubernetes distros, IfState, Cilium manifests and airgap images, workstation and agent tools), the code-agent sandbox image, `flakeModules.docs` (MkDocs + reveal.js: `packages.documentation`, `packages.slides`), `flakeModules.dev` (treefmt, docs, `lock-sync`, docs as checks), the org devenv shell (`org-pkgs/devenv`) and `nix flake init -t github:external-systems/pkgs`. | Inventory, clan vars, fleet policy |
 | **modules** | Reusable NixOS (`nixosModules.*`, options under `hostSpec.*`) and home-manager (`homeModules.*`, options under `homeSpec.*`) modules. Every module is off until enabled. `homeModules.agents` installs the skills tree. | Machines, users, packages, IPs or account ids |
 | **skills** | Every agent skill: own skills in `skills/`, external sources as `skills-*` inputs, presets, `mkSkillsTree`, `mkSkillsRuntime`, and the skill checks and apps (`package-skills`, `skills-drift`). Public. | Secrets, IPs, hostnames |
 | **not-secrets** | The values schema, `lib`, `flakeModules.{values,checks}` and public placeholder values (RFC 5737/3849/7042/2606 ranges only), so `nix flake show` and public evaluation always work. | Any real value (`checks.placeholders-only`) |
 | **secrets** | Private. Only `values/`: the real addresses, interfaces, MACs, deploy targets, storage box ids. Imports not-secrets for the schema and guards. | Credentials (keys, tokens, passwords go in clan vars) |
 | **clanServices** | Standalone custom clan services: `k3s`, `rke2`, `netif` (IfState host links), `routed-fabric`, `wireguard-mesh`. `SPEC.md` is its contract. Uses pkgs for runtimes and airgap artifacts, and re-exports its overlays. | Machines, real values |
-| **presenting** | The MkDocs + reveal.js builder: `flakeModules.default`/`.slides`, `lib.mkSlides`, and a repo template. Its own site is published to GitHub Pages by CI. | Build output in git |
+| **presenting** | Retired: its docs and slides builder moved into pkgs `flakeModules.docs`. Repos still importing it migrate (the `mkdocs-reveal` skill), then it is archived. | New features |
 
 ## How the links work
 
@@ -77,16 +76,14 @@ users or IPs, and only home names machines.
   (that is the nixpkgs package set); clanServices is the one legacy
   exception and calls it `pkgs`. One nixpkgs for the whole org: never add a
   second nixpkgs input or `pkgs.unstable`.
-- **Every repo has a `flake.nix` and a `flake.lock`**, plus a `dev`
-  flake-parts partition (`dev/flake.nix` with its own `dev/flake.lock`)
-  that holds checks, formatter and docs. Consumers never evaluate or lock
-  dev inputs. The shell is the devenv CLI importing `org-pkgs/devenv`
-  (`fmt`, `check`, `sync-locks`, `docs-build`). See the `nix-style` skill
-  for the standard.
-- **presenting** is consumed in each repo's `dev/flake.nix` (input
-  `presenting`) to build `documentation/` into `packages.documentation`
-  with the deck at `/slides/`. It is a dev input, never a runtime one. See
-  the `mkdocs-reveal` skill.
+- **Every repo has a `flake.nix` and a `flake.lock`** and imports
+  `inputs.org-pkgs.flakeModules.dev`, which brings the formatter, checks,
+  and the docs site and deck (`documentation/` built into
+  `packages.documentation`, deck at `/slides/`). No dev inputs, no
+  `dev/flake.nix`, no dev partition (pkgs alone keeps one, for the
+  code-agent image). The shell is the devenv CLI importing
+  `org-pkgs/devenv` (`fmt`, `check`, `sync-locks`, `docs-build`). See the
+  `nix-style` and `mkdocs-reveal` skills.
 - **skills reaches machines through modules.** modules has a `skills`
   input; `homeModules.agents` calls `inputs.skills.lib.mkSkillsTree` with
   each user's `homeSpec.agents.skills.{preset,extraSources}`. pkgs' dev
@@ -128,7 +125,7 @@ shape, and fix this skill in the same PR if the map has moved.
 | A real IP, MAC, interface name, domain or storage box id | secrets (plus a matching placeholder in not-secrets) |
 | A clan service for more than one fleet (Kubernetes, networking) | clanServices |
 | A machine, a user profile, an inventory instance, which skills a user gets | home |
-| The docs/slides builder itself | presenting |
+| The docs/slides builder itself | pkgs (`flakeModules/docs.nix`) |
 
 ## Changing several repos
 
@@ -136,8 +133,8 @@ Work from the top of the chain down, one PR per repo, and bump each
 consumer after its dependency merges:
 
 1. pkgs (if touched). Bumping `org-pkgs` anywhere moves nixpkgs, so run
-   `sync-locks` in the same commit to keep `flake.lock`, `dev/flake.lock`
-   and `devenv.lock` on one nixpkgs (`checks.lock-sync`).
+   `sync-locks` in the same commit to keep `flake.lock` and `devenv.lock`
+   on one nixpkgs (`checks.lock-sync`).
 2. not-secrets, then secrets (`nix flake update not-secrets` there).
 3. skills, then modules (`nix flake update skills`).
 4. home: `nix flake update modules secrets` (and `org-pkgs` if it moved).

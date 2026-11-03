@@ -1,157 +1,168 @@
 ---
 name: mkdocs-reveal
-description: "Add a MkDocs documentation site and a reveal.js slide deck to a Nix flake repo as build artifacts (packages.documentation, packages.slides, live-preview apps, GitHub Pages deploy) by consuming the external-systems/presenting flake — its flakeModules and lib.mkSlides carry the reveal.js pin and all build logic, so the consumer writes a few lines, no boilerplate. Also covers scaffolding a greenfield docs+slides repo from the presenting template. Load this whenever the user mentions MkDocs, reveal.js, slides, slide decks, presentations, docs sites, or GitHub Pages in a Nix/flake context, wants markdown turned into a website or deck, or asks to document a flake repo — even if they never name the presenting flake."
+description: "Add or change a MkDocs documentation site and a reveal.js slide deck in a Nix flake repo (packages.documentation, packages.slides, live-preview apps, GitHub Pages deploy) with external-systems/pkgs flakeModules.docs, which carries MkDocs from nixpkgs, the reveal.js pin and all build logic, so a repo writes Markdown and at most a few docs.* settings. Load this whenever the user mentions MkDocs, reveal.js, slides, slide decks, presentations, docs sites, or GitHub Pages in a Nix/flake context, wants markdown turned into a website or deck, asks to document a flake repo, or mentions the old external-systems/presenting flake."
 ---
 
 # MkDocs + reveal.js in a flake
 
-Two build artifacts from plain Markdown, built by Nix with zero npm and
-zero Python installs: a MkDocs (Material) website and a reveal.js slide
-deck, optionally embedded in the site at `/slides/`. All of the build
-machinery lives in the `external-systems/presenting` flake and rides into
-a consumer as a flake input — the consumer's job is a few lines of config,
-never copied build code.
+Two build artifacts from plain Markdown, built by Nix with zero npm: a
+MkDocs (Material) website and a reveal.js deck, embedded in the site at
+`/slides/`. All build logic lives in external-systems/pkgs as
+`flakeModules.docs` (also part of `flakeModules.dev`). A repo never copies
+build code and declares no docs input: MkDocs comes from the org nixpkgs,
+reveal.js from pkgs' own `reveal-js` input.
+
+external-systems/presenting is retired. Its `flakeModules.default`,
+`flakeModules.slides` and `lib.mkSlides`, the `documentation.*` and
+`presenting.slides.*` options, and mkdocs-flake are the old pattern. To
+move a repo off them, see [Migrating off presenting](#migrating-off-presenting).
 
 ## Pick the path
 
-- **Existing flake** → consume `presenting` as an input (the rest of this
-  file). This is the common case.
-- **Greenfield repo that is only docs + slides** →
-  `nix flake init -t github:external-systems/presenting`, then `git add .`.
-  The template's own docs site is the tutorial; you're done here.
-- **Debugging the build, or changing presenting itself** → read
-  `references/under-the-hood.md` for what the module does mechanically.
+- **New repo** → `nix flake init -t github:external-systems/pkgs`; docs
+  and slides are already wired (the `nix-style` skill's new-repo
+  procedure).
+- **Existing org repo** → import `inputs.org-pkgs.flakeModules.dev` in
+  `flake.nix` (the rest of this file).
+- **A flake outside the org, without the rest of the standard** → import
+  `inputs.org-pkgs.flakeModules.docs` alone.
+- **Debugging the build or changing the module** →
+  `references/under-the-hood.md`.
 
-## Consume from an existing flake
-
-Three edits. Full annotated versions of every snippet are in
-`references/consumption.md`.
-
-**1. Add the input** (in an org flake repo: `dev/flake.nix`, following
-`dev-nixpkgs`, so docs never reach the main `flake.lock`; the module in
-step 2 then lives in `documentation/flake-module.nix`, imported from the dev
-partition; `nix build .#documentation` still works through
-`legacyPackages`, and live previews use ports 8981/8982. See the `nix-style` skill's org flake standard.
-Otherwise flake.nix):
+## Wire it
 
 ```nix
-inputs.presenting = {
-  url = "github:external-systems/presenting";
-  # Nested `inputs = {...}` on purpose: three or more flat
-  # `inputs.<x>.follows` lines trip statix's repeated-keys lint (W20).
+# flake.nix
+{
   inputs = {
-    # presenting takes nixpkgs + flake-parts from its org-pkgs input.
-    org-pkgs.inputs = {
-      nixpkgs.follows = "nixpkgs";
-      flake-parts.follows = "flake-parts";
-    };
-    mkdocs-flake.follows = "mkdocs-flake";  # only if you already have it
+    org-pkgs.url = "github:external-systems/pkgs";
+    nixpkgs.follows = "org-pkgs/nixpkgs";
+    flake-parts.follows = "org-pkgs/flake-parts";
+    import-tree.follows = "org-pkgs/import-tree";
   };
-};
+
+  outputs = inputs:
+    inputs.flake-parts.lib.mkFlake {inherit inputs;} {
+      systems = ["x86_64-linux" "aarch64-linux"];
+      imports = [
+        inputs.org-pkgs.flakeModules.dev # treefmt, docs + slides, lock-sync
+        (inputs.import-tree ./flake-parts)
+      ];
+    };
+}
 ```
 
-In an org `dev/flake.nix` that is one line,
-`inputs.org-pkgs.inputs.nixpkgs.follows = "dev-nixpkgs";`, which leaves
-a single nixpkgs in `dev/flake.lock`. A flake that already has an
-`org-pkgs` input can instead write `inputs.org-pkgs.follows = "org-pkgs";`.
+Then write Markdown. By convention, with no Nix:
 
-The `follows` lines deduplicate the dependency graph onto the consumer's
-own pins. reveal.js itself needs no input and no follows — its pin
-travels inside presenting, which is the point: one place upgrades it.
-
-**2. Import one module** (flake-parts `imports`) — the choice matters:
-
-- Already importing `mkdocs-flake.flakeModules.default` yourself →
-  `inputs.presenting.flakeModules.slides`
-- No mkdocs-flake import anywhere → `inputs.presenting.flakeModules.default`
-  (pulls mkdocs-flake in for you)
-
-Importing `flakeModules.default` *and* mkdocs-flake yourself declares
-mkdocs-flake's options twice and fails eval. Pick exactly one shape.
-
-**3. Point it at the deck** (any perSystem module):
-
-```nix
-presenting.slides.dir = ./slides;
-# only when the deck is not at <repo-root>/slides — the serve app looks
-# for the live files by this name from wherever you run it:
-presenting.slides.serveDirName = "documentation/slides";
+```
+documentation/
+  docs/index.md        the site, one file per page
+  slides/slides.md     the deck (optional)
 ```
 
-**Then `git add` every new file.** Nix evaluates the flake from the git
-tree; untracked files don't exist and the failure ("file not found")
-never mentions git. This is the single most common trip-wire.
-
-You now have:
+**`git add` every new file.** Nix evaluates the git tree; untracked files
+don't exist, and the error never mentions git.
 
 | Command | Result |
 | --- | --- |
-| `nix build .#documentation` | the website, deck embedded at `/slides/` |
-| `nix build .#slides` | just the deck (opens from `file://`) |
-| `nix run .#watch-documentation` | live docs preview, `127.0.0.1:8000` |
-| `nix run .#serve-slides [-- 8001]` | live slides preview, serves the checkout |
-| `nix flake show` | confirm the outputs exist |
+| `nix build .#documentation` | the site, deck at `slides/`; open `result/index.html` from disk |
+| `nix build .#slides` | the deck alone (opens from `file://`) |
+| `nix run .#watch-documentation [-- PORT]` | live docs, `127.0.0.1:8981` (devenv `docs`) |
+| `nix run .#serve-slides [-- PORT]` | live deck, `127.0.0.1:8982` (devenv `slides`) |
+| `devenv up` | both previews |
 
-The embed is automatic: when mkdocs-flake is imported, `embedInDocs`
-defaults on and the built deck is copied into the site before MkDocs
-runs. `presenting.slides.embedInDocs = false;` opts out.
+`flakeModules.dev` also adds `checks.documentation` and `checks.slides`,
+so `nix flake check` (and CI) fails on a broken docs build.
+
+## Settings
+
+Everything is optional; set only what differs, in any flake-parts module
+(the template uses `flake-parts/docs.nix`):
+
+```nix
+{
+  perSystem.docs = {
+    repo = "home"; # site_url https://home.external.systems/, repo + edit links
+    settings = {   # mkdocs.yml as Nix, merged over the org defaults
+      site_name = "external-systems home";
+      nav = [{Home = "index.md";} {Fleet = "fleet/index.md";}];
+      plugins = ["search" "offline" "glightbox" "tags"];
+    };
+    extraPythonPackages = ps: [ps.mkdocs-redirects]; # more plugins
+    slides = {
+      title = "Home fleet";
+      theme = "white"; # reveal.js theme
+      config = {transition = "fade"; width = 1280; height = 720;};
+      extraHead = ''<link rel="stylesheet" href="custom.css" />'';
+    };
+  };
+}
+```
+
+All options with defaults: `references/options.md`. The org defaults are
+Material (light/dark palette, system fonts), `search` + `offline`,
+`use_directory_urls: false` (the site browses from `file://`), and the
+common pymdownx extensions. Without `nav`, MkDocs builds the navigation
+from the files. A list setting (`plugins`, `markdown_extensions`,
+`theme.features`) replaces the default list, so repeat the defaults you
+keep.
+
+Escape hatches, used as-is when present:
+
+- `documentation/mkdocs.yml` replaces the generated config
+  (`docs.settings` is then ignored). Needed only for what JSON cannot
+  express, such as `!!python/name:` tags.
+- `documentation/slides/index.html` replaces the generated deck page.
 
 ## The deck
 
-A deck directory is `index.html` + one Markdown file per
-`data-markdown` deck. Start from `references/starter-deck/` (copy both
-files, edit the title and slides). Markdown separators, matched against
-whole lines:
+`slides.md` separators, matched against whole lines: `---` next slide,
+`--` slide below, `Note:` speaker notes to the end of the slide. Start
+from `references/starter-deck/slides.md`. Images, CSS and JS go next to
+it in `slides/` and are copied with the deck; load extra CSS/JS with
+`docs.slides.extraHead`.
 
-- `---` — next slide to the right
-- `--` — next slide below
-- `Note:` — speaker notes to the end of the slide
+## Linking the deck from a page
 
-Swap the theme by editing the `reveal/theme/black.css` link in
-`index.html` (`white`, `league`, `moon`, `dracula`, ... — see
-`reveal/theme/` in the built output). Live-edit loop: run
-`nix run .#serve-slides` from the repo root, edit the `.md`, refresh.
-Both preview apps default to port 8000; pass another port to run both.
+Plain HTML, never a Markdown link: strict builds check Markdown links
+against `docs/`, where `slides/` exists only mid-build.
 
-## The docs site
-
-Point mkdocs-flake at the directory holding `mkdocs.yml`:
-
-```nix
-documentation.mkdocs-root = ./documentation;
-documentation.strict = true;   # broken links fail the build
+```html
+<iframe src="slides/index.html" title="Slide deck"
+  style="width: 100%; aspect-ratio: 16 / 9; border: 0;"
+  allowfullscreen></iframe>
 ```
 
-When linking to the embedded deck from a docs page, use plain HTML, not
-Markdown links: MkDocs validates Markdown links against `docs/`, where
-`/slides/` only exists during the build, so a strict build fails and the
-live preview 404s. The iframe embed page in
-`references/consumption.md` shows the pattern — steal it verbatim.
+The URL is relative to the page (`use_directory_urls: false`): from
+`docs/index.md` it is `slides/index.html`, from `docs/a/page.md` it is
+`../slides/index.html`.
 
-## Upgrading and overriding
+## Migrating off presenting
 
-- New reveal.js or build fixes: `nix flake update presenting`.
-- Pin reveal.js differently for one consumer, or build something the
-  module doesn't offer: call the builder directly —
-  `inputs.presenting.lib.mkSlides { inherit pkgs; slidesDir = ./slides; revealSrc = ...; }`
-  returns `{ package, serveApp; }` (see `references/under-the-hood.md`).
+1. `nix flake update org-pkgs` (pkgs with `flakeModules.docs`).
+2. `flake.nix`: import `inputs.org-pkgs.flakeModules.dev` at the root;
+   remove `partitionedAttrs`, `partitions.dev` and the
+   `flakeModules.partitions` import (unless the repo keeps a real
+   dev-only input).
+3. `git rm -r dev/` (`flake.nix`, `flake.lock`, `flake-module.nix`); move
+   any repo checks or apps from `dev/flake-module.nix` into
+   `flake-parts/`.
+4. Replace `documentation/flake-module.nix` with `docs.*` settings in
+   `flake-parts/docs.nix`, or delete it. Port `mkdocs.yml` into
+   `docs.settings` and delete it (keep it only as the escape hatch); delete
+   `slides/index.html` unless the deck needs its own.
+5. `sync-locks`, `fmt`, `check`, `nix build .#documentation`; open the
+   result and compare with the old site.
+
+While a repo still imports presenting's module, `docs.enable` and
+`docs.slides.enable` stay off, so step 1 alone never breaks a build.
 
 ## What not to do
 
-**Never commit build artifacts into git history.** The site and deck are
-built in CI and deployed to GitHub Pages only (the org CI,
-`.github/workflows/ci.yml` calling external-systems/pkgs `org-ci.yml`); git holds the Markdown sources, never the
-output. That means no `result` or `result-*` links, no `_site/`, `site/`
-or `documentation/site/`, no built deck or HTML copied into the tree, and
-no pushes to a `gh-pages` branch. Every consumer gitignores
-`result`, `result-*`, `site/`, `_site/` and `documentation/site/`, and
-states this rule in its CLAUDE.md or AGENTS.md. Check `git status` before
-every commit and unstage anything built. To publish, merge to `main` and
-let CI build and deploy.
-
-Copying presenting's `flake-parts/slides.nix`, `inline-markdown.py`, or
-the reveal-js input pin into a consumer is the old template-era pattern —
-it forks code that now has a maintained upstream. If you find yourself
-transcribing build logic, import the module or call `lib.mkSlides`
-instead; if neither fits, the right fix is a presenting PR, and
-`references/under-the-hood.md` is the map.
+- **Never commit build output**: no `result`/`result-*`, `_site/`,
+  `site/`, `documentation/site/` (all gitignored), no built deck or HTML
+  from `slides.md`, no `gh-pages` pushes. CI (the org CI's `deploy` job)
+  is the only publisher; merge to `main` to publish.
+- Never copy the module, `inline-markdown.py`, a reveal.js pin or a
+  mkdocs Python env into a repo. Never add mkdocs-flake or presenting as
+  an input. A missing feature is a pkgs PR (`flakeModules/docs.nix`).
