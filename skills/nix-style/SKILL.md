@@ -103,21 +103,23 @@ source of truth is pkgs `documentation/docs/ci.md` and `org-ci.yml`.
   `<caller job id> / <job id>`), `uses:
   external-systems/pkgs/.github/workflows/org-ci.yml@main`, the four
   permissions (`contents`, `actions`, `pages`, `id-token`: write),
-  `with: {minor: N}` and `secrets: inherit`.
+  `with: {major: W, minor: N}` and `secrets: inherit`.
 - **No per-repo workflow logic.** Delete old `check.yml`/`pages.yml`.
   A CI change goes in pkgs `org-ci.yml` (as a PR there) and reaches every
   repo; never add steps, jobs or inputs to a caller to work around it.
 - **Jobs**: `flake-check` (`nix flake check`, PRs, merge queue, main);
   on `main` pushes, `deploy` (docs to GitHub Pages) and `release`
-  (`0.<minor>.<git rev-list --count HEAD>`). `minor` is 0 for a new repo,
-  or continues a repo's existing 0.x series.
+  (`<major>.<minor>.<git rev-list --count HEAD>`, semver). `major` and
+  `minor` are 0 for a new repo, or continue a repo's existing series;
+  bump `major` for a breaking release and reset `minor` with it.
 - **Ruleset**: `.github/rulesets/default.json`, copied from the pkgs
   template; it requires **`ci / flake-check`** (strict), squash-only,
   linear history, signed commits, no force-push or deletion. GitHub does
   not read the file: apply it with `gh api`, see the reference.
 - **Pages**: one-time Settings → Pages → Source: **GitHub Actions**.
-- **Private inputs** (e.g. external-systems/secrets): share the org
-  secrets `NIX_APP_ID` + `NIX_APP_PRIVATE_KEY` with the repo and set
+- **Private inputs** (e.g. external-systems/secrets): give the repo the
+  org variable `NIX_APP_CLIENT_ID` and the org secret
+  `NIX_APP_PRIVATE_KEY`, and set
   `private-repos: secrets` (comma-separated, no owner) under `with:`.
 - Never commit build output (`result*`, `_site/`, `site/`: gitignored;
   CI is the only publisher) and never use `pull_request_target`.
