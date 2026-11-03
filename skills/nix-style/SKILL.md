@@ -1,6 +1,6 @@
 ---
 name: nix-style
-description: "Nix code style, tool loop and the org flake standard (user preferences): attribute nesting/quoting/inherit rules, module-system and repo-root-path conventions, treefmt (alejandra, deadnix, statix, nixf-diagnose — the nixd editor diagnostics — shellcheck, sizelint) via external-systems/pkgs flakeModules, the devenv CLI shell (devenv.yaml importing org-pkgs/devenv), the dev flake-parts partition holding checks, formatter and MkDocs/reveal.js docs with its own dev/flake.lock, lock sync, the pkgs repo template, and the flake-repo agent contract. Use when writing or editing any .nix file, creating a new flake repo, or adding a formatter, linter, dev shell or docs to one."
+description: "Nix code style, tool loop and the org flake standard (user preferences): attribute nesting/quoting/inherit rules, module-system and repo-root-path conventions, treefmt (alejandra, deadnix, statix, nixf-diagnose — the nixd editor diagnostics — shellcheck, sizelint) via external-systems/pkgs flakeModules, the devenv CLI shell (devenv.yaml importing org-pkgs/devenv), the dev flake-parts partition holding checks, formatter and MkDocs/reveal.js docs with its own dev/flake.lock, lock sync, the pkgs repo template, the org CI (ci.yml calling pkgs org-ci.yml, the default ruleset, Pages, releases), and the flake-repo agent contract. Use when writing or editing any .nix file, creating a new flake repo, or adding a formatter, linter, dev shell or docs to one."
 ---
 
 # nix-style — Nix code style and tool loop
@@ -29,6 +29,9 @@ one. Repo-specific facts live in each repo's `AGENTS.md`.
   in a `dev` flake-parts partition with its own `dev/flake.nix` and
   `dev/flake.lock`, so treefmt-nix, devenv and docs inputs never reach
   the main `flake.lock`. See [Org flake standard](#org-flake-standard).
+- Every repo is a flake with docs and runs the org CI: a `ci.yml`
+  copied from pkgs that calls `org-ci.yml`, never per-repo workflow
+  logic. See [Org CI](#org-ci).
 - Never reach for `--impure`, `--no-sandbox`, `sandbox = false`, or
   `builtins.readFile /etc/...` to make something build. Impurity hides
   bugs, breaks FlakeHub Cache reproducibility, and fails on CI. If
@@ -86,6 +89,40 @@ before creating a flake repo or touching a repo's partition wiring,
 
 A repo that does not match yet still gets the style rules below; offer to
 converge it rather than doing it unasked.
+
+## Org CI
+
+Every org repo runs the same CI: external-systems/pkgs
+`.github/workflows/org-ci.yml`, called from a small `ci.yml`. Load
+[references/flake-standard.md](references/flake-standard.md#org-ci)
+before adding or changing any workflow, ruleset or Pages setting. The
+source of truth is pkgs `documentation/docs/ci.md` and `org-ci.yml`.
+
+- **Caller**: copy pkgs `templates/default/.github/workflows/ci.yml`
+  exactly. One job, id `ci` (never rename it: the status check is
+  `<caller job id> / <job id>`), `uses:
+  external-systems/pkgs/.github/workflows/org-ci.yml@main`, the four
+  permissions (`contents`, `actions`, `pages`, `id-token`: write),
+  `with: {minor: N}` and `secrets: inherit`.
+- **No per-repo workflow logic.** Delete old `check.yml`/`pages.yml`.
+  A CI change goes in pkgs `org-ci.yml` (as a PR there) and reaches every
+  repo; never add steps, jobs or inputs to a caller to work around it.
+- **Jobs**: `flake-check` (`nix flake check`, PRs, merge queue, main);
+  on `main` pushes, `deploy` (docs to GitHub Pages) and `release`
+  (`0.<minor>.<git rev-list --count HEAD>`). `minor` is 0 for a new repo,
+  or continues a repo's existing 0.x series.
+- **Ruleset**: `.github/rulesets/default.json`, copied from the pkgs
+  template; it requires **`ci / flake-check`** (strict), squash-only,
+  linear history, signed commits, no force-push or deletion. GitHub does
+  not read the file: apply it with `gh api`, see the reference.
+- **Pages**: one-time Settings → Pages → Source: **GitHub Actions**.
+- **Private inputs** (e.g. external-systems/secrets): share the org
+  secrets `NIX_APP_ID` + `NIX_APP_PRIVATE_KEY` with the repo and set
+  `private-repos: secrets` (comma-separated, no owner) under `with:`.
+- Never commit build output (`result*`, `_site/`, `site/`: gitignored;
+  CI is the only publisher) and never use `pull_request_target`.
+- New repos start from `nix flake init -t github:external-systems/pkgs`,
+  which already has `ci.yml` and the ruleset.
 
 ## Style guide
 

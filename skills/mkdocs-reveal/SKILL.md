@@ -139,8 +139,8 @@ live preview 404s. The iframe embed page in
 ## What not to do
 
 **Never commit build artifacts into git history.** The site and deck are
-built in CI and deployed to GitHub Pages only (presenting's
-`.github/workflows/pages.yml`); git holds the Markdown sources, never the
+built in CI and deployed to GitHub Pages only (the org CI,
+`.github/workflows/ci.yml` calling external-systems/pkgs `org-ci.yml`); git holds the Markdown sources, never the
 output. That means no `result` or `result-*` links, no `_site/`, `site/`
 or `documentation/site/`, no built deck or HTML copied into the tree, and
 no pushes to a `gh-pages` branch. Every consumer gitignores
