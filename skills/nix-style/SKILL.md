@@ -103,14 +103,15 @@ source of truth is pkgs `documentation/docs/ci.md` and `org-ci.yml`.
   `<caller job id> / <job id>`), `uses:
   external-systems/pkgs/.github/workflows/org-ci.yml@main`, the four
   permissions (`contents`, `actions`, `pages`, `id-token`: write),
-  `with: {minor: N}` and `secrets: inherit`.
+  `with: {major: W, minor: N}` and `secrets: inherit`.
 - **No per-repo workflow logic.** Delete old `check.yml`/`pages.yml`.
   A CI change goes in pkgs `org-ci.yml` (as a PR there) and reaches every
   repo; never add steps, jobs or inputs to a caller to work around it.
 - **Jobs**: `flake-check` (`nix flake check`, PRs, merge queue, main);
   on `main` pushes, `deploy` (docs to GitHub Pages) and `release`
-  (`0.<minor>.<git rev-list --count HEAD>`). `minor` is 0 for a new repo,
-  or continues a repo's existing 0.x series.
+  (`<major>.<minor>.<git rev-list --count HEAD>`, semver). `major` and
+  `minor` are 0 for a new repo, or continue a repo's existing series;
+  bump `major` for a breaking release and reset `minor` with it.
 - **Ruleset**: `.github/rulesets/default.json`, copied from the pkgs
   template; it requires **`ci / flake-check`** (strict), squash-only,
   linear history, signed commits, no force-push or deletion. GitHub does

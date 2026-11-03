@@ -309,14 +309,16 @@ jobs:
       pages: write
       id-token: write
     with:
+      major: 0
       minor: 0
     secrets: inherit
 ```
 
 - The job id stays `ci`, so the required check is `ci / flake-check` in
   every repo and one ruleset fits all of them.
-- `minor`: the release series x in `0.x.<commits>`. Use 0 for a new
-  repo; a repo with existing 0.x tags continues its x (or starts the next
+- `major` / `minor`: w and x in the `w.x.<commits>` release (semver).
+  Bump `major` for a breaking release and reset `minor` to 0. Use 0/0
+  for a new repo; a repo with existing tags continues its w.x (or starts the next
   one).
 - `private-repos: secrets` (comma-separated, no owner) under `with:` for
   a repo whose flake reads private inputs. The GitHub App
@@ -337,7 +339,7 @@ jobs:
 |---|---|---|
 | `ci / flake-check` | PRs, merge queue, `main` | `nix flake check` with a warm store and eval cache; on `main` also builds `.#documentation` and uploads the Pages artifact |
 | `ci / deploy` | `main`, after the check | deploys the artifact to GitHub Pages |
-| `ci / release` | `main`, after the check | tags and releases `0.<minor>.<git rev-list --count HEAD>` |
+| `ci / release` | `main`, after the check | tags and releases `<major>.<minor>.<git rev-list --count HEAD>` |
 
 So `nix flake check` must build the docs (the dev partition's
 `flakeModules.dev` adds `documentation`/`slides` as checks), and
@@ -402,7 +404,7 @@ to move nixpkgs.
 3. `nix flake lock && nix flake lock ./dev && devenv update`, then
    `nix run .#sync-locks`.
 4. `devenv allow`, then `fmt`, `check`, `devenv test`, `docs-build`.
-   Set `minor` in `.github/workflows/ci.yml`; after the first push,
+   Set `major` and `minor` in `.github/workflows/ci.yml`; after the first push,
    set Pages to GitHub Actions and apply the ruleset ([Org CI](#org-ci)).
 5. Open the repo in VS Code from the shell and check that nixd hints
    (hover a flake-parts option) work.

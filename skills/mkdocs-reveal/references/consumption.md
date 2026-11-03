@@ -92,7 +92,7 @@ nav:
 
 Every org repo deploys through the org CI: copy
 `templates/default/.github/workflows/ci.yml` from external-systems/pkgs
-(job id `ci`, set `minor`). Its `org-ci.yml` runs `nix flake check`, then
+(job id `ci`, set `major` and `minor`). Its `org-ci.yml` runs `nix flake check`, then
 on `main` `nix build .#documentation`, `cp -rL result _site` (the store is
 read-only, hence the copy), `upload-pages-artifact` + `deploy-pages`.
 Never write a per-repo Pages workflow; the only per-repo setup is
