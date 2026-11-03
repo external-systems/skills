@@ -90,11 +90,14 @@ nav:
 
 ## GitHub Pages
 
-Presenting's own `.github/workflows/pages.yml` is the reference: `nix
-flake check`, `nix build .#documentation`, `cp -rL result _site` (the
-store is read-only, hence the copy), `upload-pages-artifact` +
-`deploy-pages`. Copy it unchanged; the only per-repo setup is Settings →
-Pages → Source: GitHub Actions.
+Every org repo deploys through the org CI: copy
+`templates/default/.github/workflows/ci.yml` from external-systems/pkgs
+(job id `ci`, set `minor`). Its `org-ci.yml` runs `nix flake check`, then
+on `main` `nix build .#documentation`, `cp -rL result _site` (the store is
+read-only, hence the copy), `upload-pages-artifact` + `deploy-pages`.
+Never write a per-repo Pages workflow; the only per-repo setup is
+Settings → Pages → Source: GitHub Actions. See the nix-style skill's
+`references/flake-standard.md` (Org CI).
 
 The `_site` copy exists only inside the CI runner. Never commit it, or
 `result`, `site/` or any other build output, and never push a `gh-pages`

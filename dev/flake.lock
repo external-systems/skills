@@ -193,11 +193,11 @@
         "reveal-js": "reveal-js"
       },
       "locked": {
-        "lastModified": 1793447949,
-        "narHash": "sha256-X4GCW7OswyceP9rf/9nu+bLDj9bwtSnMxejp/V1M3n4=",
+        "lastModified": 1793453920,
+        "narHash": "sha256-NPjWRnrPSJfSTHXLo7iCJOMTaanjpBLwazdhksGygIE=",
         "owner": "external-systems",
         "repo": "presenting",
-        "rev": "5b1b5aef1c53c60c9a6e79b1095b9fcdeca022d1",
+        "rev": "91b03e751f0ef4c479054361d2e7b18e6707611b",
         "type": "github"
       },
       "original": {
