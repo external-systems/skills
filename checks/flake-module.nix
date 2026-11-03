@@ -1,17 +1,11 @@
-# Dev partition: the org base (treefmt, lock-sync, docs) from pkgs, the
-# skill metadata gates and the package-skills and skills-drift apps. A
-# consumer of lib or packages never evaluates it.
+# The skill gates (checks) and the package-skills and skills-drift apps
+# they exercise. Treefmt, lock-sync and docs come from
+# org-pkgs.flakeModules.dev (flake.nix).
 {
-  inputs,
   lib,
   self,
   ...
 }: {
-  imports = [
-    inputs.org-pkgs.flakeModules.dev
-    ../documentation/flake-module.nix
-  ];
-
   perSystem = {
     pkgs,
     self',

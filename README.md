@@ -9,20 +9,19 @@ kimi-code `~/.kimi-code/skills`, claude-code `~/.claude/skills`, and
 ## Layout
 
 ```
-flake.nix               # inputs (nixpkgs + flake-parts follow the org-pkgs input), partitions
+flake.nix               # inputs (nixpkgs + flake-parts follow the org-pkgs input), imports
 flake-module.nix        # lib.* and packages.* (what consumers evaluate)
 lib/mk-skills.nix       # mkSkills: compose skill dirs into one linkFarm
 lib/check-skill-metadata.py  # SKILL.md frontmatter validator
-dev/flake.nix           # dev-only inputs, locked in dev/flake.lock
-dev/flake-module.nix    # dev partition: org-pkgs flakeModules.dev, docs, gates, apps
+checks/flake-module.nix # skill gates and the package-skills / skills-drift apps
 devenv.yaml devenv.nix  # the dev shell (devenv CLI, org shell from pkgs)
 documentation/          # docs site and slide deck
 skills/<name>/SKILL.md  # this repo's skills
 ```
 
-Checks, apps, the formatter and docs live in the `dev` flake-parts
-partition, so a consumer reading `lib` or `packages` never evaluates them
-or fetches their inputs. The repo follows the org flake standard (the
+The formatter, lock-sync and docs come from `org-pkgs.flakeModules.dev`,
+so this repo has no dev partition and no dev-only inputs: everything
+they need is already in the org-pkgs lock. The repo follows the org flake standard (the
 `nix-style` skill).
 
 ## Develop
@@ -124,7 +123,7 @@ pi and kimi-code parse the frontmatter with JS YAML libraries that reject a
 with "nested mappings are not allowed in compact mappings" (pi) /
 "bad indentation of a mapping entry" (kimi) and the skill is **silently
 skipped** (kimi logs `Skipping invalid skill`; pi reports a skill conflict).
-`checks.skill-frontmatter` (`dev/flake-module.nix`) fails `nix flake check`
+`checks.skill-frontmatter` (`checks/flake-module.nix`) fails `nix flake check`
 on unparseable frontmatter, so CI catches it before hosts or the sandbox
 image pick the skill up. Names, descriptions, and titles must also avoid
 XML-like angle-bracket markup; the shared validator rejects it, and the
@@ -179,8 +178,7 @@ Workflow / behavior skills:
   Language- and repo-agnostic.
 
 - `org-repos` — map of the external-systems org: what home, pkgs,
-  modules, skills, secrets, not-secrets, clanServices and presenting
-  each own, which flake consumes which, the `~/external-systems/<repo>`
+  modules, skills, secrets, not-secrets and clanServices each own, which flake consumes which, the `~/external-systems/<repo>`
   clone layout, and the order to bump inputs across repos.
 
 - `skills-repo` — how this repo, external-systems/modules and
@@ -191,8 +189,8 @@ Repo knowledge skills (deep "how things work" docs, loaded on demand by
 their description):
 
 - `nix-style` — Nix code style, the treefmt tool loop and the org flake
-  standard (pkgs flake modules, dev partition, devenv CLI shell, docs and
-  slides) (user preferences).
+  standard (one org-pkgs input and flakeModules.dev, devenv CLI shell,
+  docs and slides) (user preferences).
 - `flakeparts` — flake-parts module system mechanics, inputs, the
   lint gate, integrations.
 - `import-tree` — flake-parts auto-import via import-tree: mechanics,
@@ -245,10 +243,9 @@ their description):
   datastores, air gap, Cilium/Multus, NixOS/VM tests, k3d labs, and k3k.
 - `openebs` — OpenEBS 4.6.x Kubernetes CSI storage: engines, per-node
   prerequisites, StorageClasses, upgrades, troubleshooting.
-- `mkdocs-reveal` — add a MkDocs docs site + reveal.js slide deck to any
-  flake repo as build artifacts by consuming the
-  `external-systems/presenting` flake (flakeModules + lib.mkSlides, zero
-  boilerplate), or scaffold greenfield from its template.
+- `mkdocs-reveal` — the MkDocs docs site + reveal.js slide deck every
+  org repo gets from external-systems/pkgs `flakeModules.docs`: layout,
+  `docs.*` options, escape hatches, previews.
 - `kubenix` — render Kubernetes manifests with the Nix module system
   (hall/kubenix): typed resources, helm chart inflation, Nix-built OCI
   images + skopeo push, CRDs/typed custom resources, secrets via
