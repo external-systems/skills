@@ -102,8 +102,8 @@ purely organizational (`flake-parts/packages/foo.nix` defines
 ## The lint gate
 
 The org gate is `checks.treefmt` from `inputs.org-pkgs.flakeModules.treefmt`,
-imported in the repo's `dev` partition (the `nix-style` skill's org
-flake standard). The hand-rolled form below is legacy, kept for repos
+imported through `flakeModules.dev` at the root (the `org-standards`
+skill). The hand-rolled form below is legacy, kept for repos
 not yet converged — do not add it to new repos.
 
 Legacy: format/lint as a hard `checks.lint` derivation — fails `nix
@@ -141,7 +141,7 @@ day-to-day loop using these tools: the `nix-style` skill.
 | clan-core | `inputs.clan-core.flakeModules.default` adds the `clan` option (fleet, clanServices, vars) | `clan-core` |
 | home-manager | `inputs.home-manager.flakeModules.home-manager` evaluates `homeConfigurations` and provides options; NixOS-side HM runs via `nixosModules.home-manager` instead | `home-manager` |
 | devenv | `inputs.devenv.flakeModule` embeds the devenv module system in `nix develop` | `devenv` |
-| org-pkgs docs | `inputs.org-pkgs.flakeModules.docs` (or `.dev`) gives `docs.*` options: MkDocs site + reveal.js deck (the `mkdocs-reveal` skill); replaces mkdocs-flake | `org-pkgs` |
+| org-pkgs docs | `inputs.org-pkgs.flakeModules.docs` (or `.dev`) gives `docs.*` options: MkDocs site + reveal.js deck (the `org-docs` skill); replaces mkdocs-flake | `org-pkgs` |
 
 Other common flake-parts integrations worth knowing: `gitea`,
 `hercules-ci`, `pre-commit`/git-hooks, `nixvim`, `nix-darwin`.

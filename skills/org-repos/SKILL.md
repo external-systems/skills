@@ -66,7 +66,7 @@ users or IPs, and only home names machines.
 | **not-secrets** | The values schema, `lib`, `flakeModules.{values,checks}` and public placeholder values (RFC 5737/3849/7042/2606 ranges only), so `nix flake show` and public evaluation always work. | Any real value (`checks.placeholders-only`) |
 | **secrets** | Private. Only `values/`: the real addresses, interfaces, MACs, deploy targets, storage box ids. Imports not-secrets for the schema and guards. | Credentials (keys, tokens, passwords go in clan vars) |
 | **clanServices** | Standalone custom clan services: `k3s`, `rke2`, `netif` (IfState host links), `routed-fabric`, `wireguard-mesh`. `SPEC.md` is its contract. Uses pkgs for runtimes and airgap artifacts, and re-exports its overlays. | Machines, real values |
-| **presenting** | Retired: its docs and slides builder moved into pkgs `flakeModules.docs`. Repos still importing it migrate (the `mkdocs-reveal` skill), then it is archived. | New features |
+| **presenting** | Retired: its docs and slides builder moved into pkgs `flakeModules.docs`. Repos still importing it migrate (the `org-docs` skill), then it is archived. | New features |
 
 ## How the links work
 
@@ -83,7 +83,8 @@ users or IPs, and only home names machines.
   `dev/flake.nix`, no dev partition (pkgs alone keeps one, for the
   code-agent image). The shell is the devenv CLI importing
   `org-pkgs/devenv` (`fmt`, `check`, `sync-locks`, `docs-build`). See the
-  `nix-style` and `mkdocs-reveal` skills.
+  `org-standards` and `org-docs` skills; branches, PRs and merge order
+  across repos are in `org-standards`.
 - **skills reaches machines through modules.** modules has a `skills`
   input; `homeModules.agents` calls `inputs.skills.lib.mkSkillsTree` with
   each user's `homeSpec.agents.skills.{preset,extraSources}`. pkgs' dev

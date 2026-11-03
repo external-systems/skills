@@ -21,8 +21,8 @@ skills/<name>/SKILL.md  # this repo's skills
 
 The formatter, lock-sync and docs come from `org-pkgs.flakeModules.dev`,
 so this repo has no dev partition and no dev-only inputs: everything
-they need is already in the org-pkgs lock. The repo follows the org flake standard (the
-`nix-style` skill).
+they need is already in the org-pkgs lock. The repo follows the org standard (the
+`org-standards` skill).
 
 ## Develop
 
@@ -66,7 +66,8 @@ verify the installed set after changing a selection.
 Every source lives here as an input; consumers never add `skills-*`
 inputs of their own. Each home-manager user gets the `base` preset (the
 `core` group: baton-pass, clan-core, devenv, flakeparts, import-tree,
-mkdocs-reveal, nix-style, org-repos, remote-builder, skills-repo) and picks extras in their profile (the agents
+nix-style, org-docs, org-repos, org-standards, remote-builder,
+skills-repo) and picks extras in their profile (the agents
 module lives in external-systems/modules). List own groups before
 external sources so own skills keep winning name collisions:
 
@@ -188,9 +189,12 @@ Workflow / behavior skills:
 Repo knowledge skills (deep "how things work" docs, loaded on demand by
 their description):
 
-- `nix-style` — Nix code style, the treefmt tool loop and the org flake
-  standard (one org-pkgs input and flakeModules.dev, devenv CLI shell,
-  docs and slides) (user preferences).
+- `nix-style` — how Nix code is written: nesting, quoting, inherit,
+  module conventions, treefmt linters and the tool loop (user
+  preferences).
+- `org-standards` — how every org repo is structured and changed: the
+  org-pkgs input and flakeModules.dev, devenv, nixd, CI, the branch
+  ruleset, PRs and merge order across repos.
 - `flakeparts` — flake-parts module system mechanics, inputs, the
   lint gate, integrations.
 - `import-tree` — flake-parts auto-import via import-tree: mechanics,
@@ -243,9 +247,10 @@ their description):
   datastores, air gap, Cilium/Multus, NixOS/VM tests, k3d labs, and k3k.
 - `openebs` — OpenEBS 4.6.x Kubernetes CSI storage: engines, per-node
   prerequisites, StorageClasses, upgrades, troubleshooting.
-- `mkdocs-reveal` — the MkDocs docs site + reveal.js slide deck every
-  org repo gets from external-systems/pkgs `flakeModules.docs`: layout,
-  `docs.*` options, escape hatches, previews.
+- `org-docs` — the docs site + slide deck every org repo gets from
+  external-systems/pkgs `flakeModules.docs`, and the org style: layout,
+  `docs.*` options, slide building blocks, sketch diagrams, Mermaid,
+  overrides, how the module works.
 - `kubenix` — render Kubernetes manifests with the Nix module system
   (hall/kubenix): typed resources, helm chart inflation, Nix-built OCI
   images + skopeo push, CRDs/typed custom resources, secrets via

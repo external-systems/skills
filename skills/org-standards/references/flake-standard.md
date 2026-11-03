@@ -17,7 +17,7 @@ snippets explain what the template contains.
 | Piece | Gives |
 |---|---|
 | `inputs.org-pkgs.flakeModules.treefmt` | org linters: `formatter`, `checks.treefmt` |
-| `inputs.org-pkgs.flakeModules.docs` | MkDocs site + reveal.js deck: `packages.documentation`, `packages.slides`, `apps.watch-documentation`, `apps.serve-slides` (the `mkdocs-reveal` skill) |
+| `inputs.org-pkgs.flakeModules.docs` | MkDocs site + reveal.js deck: `packages.documentation`, `packages.slides`, `apps.watch-documentation`, `apps.serve-slides` (the `org-docs` skill) |
 | `inputs.org-pkgs.flakeModules.dev` (also `.default`) | treefmt + docs, `checks.lock-sync`, `apps.sync-locks`, `documentation`/`slides` as checks |
 | `org-pkgs/devenv` (devenv.yaml `imports`) | the org shell: `fmt`, `check`, `sync-locks`, `docs-build`, `docs`, `slides` scripts; `devenv up` serves docs :8981 and slides :8982; `devenv test` gates |
 | `templates.default` | the whole layout below |
@@ -138,8 +138,8 @@ Rules:
 
 `documentation/docs/*.md` is the site and `documentation/slides/slides.md`
 the deck; `flakeModules.docs` finds both by convention and generates the
-MkDocs config (org defaults: Material, `search` + `offline`,
-`use_directory_urls: false`, so the build browses from `file://`) and the
+MkDocs config (org defaults: the org style, Material, `search` + `offline`, Mermaid,
+emoji, `use_directory_urls: false`, so the build browses from `file://`) and the
 deck's `index.html`. Ports are module options (docs 8981, slides 8982),
 not `dev_addr`. Settings that differ go in `flake-parts/docs.nix`:
 
@@ -148,7 +148,7 @@ _: {
   perSystem.docs = {
     repo = "<repo>"; # site_url https://<repo>.external.systems/, repo + edit links
     settings.site_name = "external-systems <repo>";
-    # settings.nav = [...];  slides.title = "...";  (mkdocs-reveal skill)
+    # settings.nav = [...];  slides.title = "...";  (org-docs skill)
   };
 }
 ```
@@ -163,7 +163,7 @@ disk, for example `firefox result/index.html`. No server process runs.
 `devenv up` (live reload on :8981, slides on :8982) is for heavy editing
 sessions.
 
-Deck format, embedding and GitHub Pages: the `mkdocs-reveal` skill.
+The org style, deck format, embedding and GitHub Pages: the `org-docs` skill.
 
 ## nixd settings
 
@@ -172,7 +172,7 @@ Every repo commits `.vscode/settings.json` from the template and sets
 `currentSystem.options`; lazy, consumers never evaluate them). nixd
 evaluates `./.` from the workspace root, so one file fits every clone.
 Top-level keys are VS Code setting IDs (`nix.serverPath`), written
-dotted: see the JSON nesting exception in SKILL.md.
+dotted: see the JSON nesting exception in the `nix-style` skill.
 
 ```json
 {
@@ -205,7 +205,7 @@ dotted: see the JSON nesting exception in SKILL.md.
 Override `options` where the repo has its own option namespace:
 
 - Modules repo: `nixos` evaluates `f.nixosModules.default` plus
-  `./dev/clan-stub.nix` (a module that reads `clan.core` fails the whole
+  `./tests/clan-stub.nix` (a module that reads `clan.core` fails the whole
   option set otherwise); `home-manager` evaluates
   `f.inputs.home-manager.lib.homeManagerConfiguration` with
   `f.homeModules.default` and plasma-manager.
@@ -372,7 +372,7 @@ Never run a bare `devenv update` to move nixpkgs.
    the template's, or move existing docs there). Port an existing
    `mkdocs.yml` into `docs.settings` in `flake-parts/docs.nix` and delete
    it, along with any `documentation/flake-module.nix` and deck
-   `index.html` (the `mkdocs-reveal` skill, "Migrating off presenting").
+   `index.html` (the `org-docs` skill, "Migrating a repo").
 6. Lock both (`nix flake lock`, `devenv update`), run `sync-locks`, then
    `fmt` (expect a formatting diff the first time: commit it separately)
    and `check`.
