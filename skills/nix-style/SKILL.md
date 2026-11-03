@@ -116,8 +116,9 @@ source of truth is pkgs `documentation/docs/ci.md` and `org-ci.yml`.
   linear history, signed commits, no force-push or deletion. GitHub does
   not read the file: apply it with `gh api`, see the reference.
 - **Pages**: one-time Settings → Pages → Source: **GitHub Actions**.
-- **Private inputs** (e.g. external-systems/secrets): share the org
-  secrets `NIX_APP_ID` + `NIX_APP_PRIVATE_KEY` with the repo and set
+- **Private inputs** (e.g. external-systems/secrets): give the repo the
+  org variable `NIX_APP_CLIENT_ID` and the org secret
+  `NIX_APP_PRIVATE_KEY`, and set
   `private-repos: secrets` (comma-separated, no owner) under `with:`.
 - Never commit build output (`result*`, `_site/`, `site/`: gitignored;
   CI is the only publisher) and never use `pull_request_target`.

@@ -319,11 +319,12 @@ jobs:
   repo; a repo with existing 0.x tags continues its x (or starts the next
   one).
 - `private-repos: secrets` (comma-separated, no owner) under `with:` for
-  a repo whose flake reads private inputs. The org secrets `NIX_APP_ID`
-  and `NIX_APP_PRIVATE_KEY` (GitHub App `external-systems-nix-ci`,
-  installed on the private repos only) must be shared with that repo:
-  org Settings → Secrets and variables → Actions → the secret →
-  Selected repositories.
+  a repo whose flake reads private inputs. The GitHub App
+  `external-systems-nix-ci` (installed on the private repos only) needs
+  the org variable `NIX_APP_CLIENT_ID` (its Client ID, not sensitive)
+  and the org secret `NIX_APP_PRIVATE_KEY`, both visible to that repo:
+  org Settings → Secrets and variables → Actions (the secret →
+  Selected repositories).
 - Only those `with:` keys change per repo. Anything else (a new step, a
   build, a deploy target) is a PR to pkgs `org-ci.yml`, never logic in
   the caller or an extra workflow next to it.
