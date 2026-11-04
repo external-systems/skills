@@ -343,6 +343,6 @@ Never run a bare `devenv update` to move nixpkgs.
 5. Open the repo in VS Code from the shell and check that nixd hints
    (hover a flake-parts option) work.
 6. Confirm the lock is lean: `jq '.nodes | keys' flake.lock` lists no
-   devenv, presenting, mkdocs-flake or second nixpkgs (treefmt-nix and
+   devenv, mkdocs-flake or second nixpkgs (treefmt-nix and
    reveal-js appear once, under org-pkgs).
 

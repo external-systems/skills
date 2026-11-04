@@ -1,6 +1,6 @@
 ---
 name: external-systems
-description: "The owner's external-systems GitHub org: which repo owns what (pkgs, skills, modules, not-secrets, secrets, home, clanServices, azure-infra, explain-kube-to-me), where clones live, which repo a change belongs in, and how every repo is built and changed: the one org-pkgs input and flakeModules.default, the devenv shell, nixd settings, lock sync, AGENTS.md, badges, the org CI (ci.yml calling pkgs org-ci.yml, Pages, releases), the branch ruleset, commits and pull requests, and the merge order across repos. Load before working in any org repo: creating or converging one, editing flake.nix wiring, devenv.yaml, .vscode, CI, rulesets or Pages, deciding where a package, module, skill, value or clan service goes, or opening, describing or sequencing PRs."
+description: "The owner's external-systems GitHub org: which core repo owns what (pkgs, skills, modules, not-secrets, secrets, home, clanServices), where clones live, which repo a change belongs in, and how every repo is built and changed: the one org-pkgs input and flakeModules.default, the devenv shell, nixd settings, lock sync, AGENTS.md, badges, the org CI (ci.yml calling pkgs org-ci.yml, Pages, releases), the branch ruleset, commits and pull requests, and the merge order across repos. Load before working in any org repo: creating or converging one, editing flake.nix wiring, devenv.yaml, .vscode, CI, rulesets or Pages, deciding where a package, module, skill, value or clan service goes, or opening, describing or sequencing PRs."
 ---
 
 # external-systems — the org's repos
@@ -23,7 +23,7 @@ a cloud session check the working directory first.
    flakeModules.default, the devenv shell, the repo template
         |               |              |            |
      skills        not-secrets    clanServices   every repo's
-        |               |         azure-infra    flake.nix and
+        |               |                        flake.nix and
         v               v                        devenv
      modules         secrets
         |               |
@@ -45,9 +45,10 @@ machines.
 | **secrets** | Private. Only `values/`: real addresses, interfaces, MACs, deploy targets, storage box ids. Same outputs as not-secrets; `checks.shape-parity`. | Credentials (those are clan vars) |
 | **home** | The clan: `inventory.nix`, `machines/`, users and their home-manager profiles, home-only clan services, `sops/`, `vars/`. Deploys run from here. | Packages, overlays, reusable modules, skills, IP literals |
 | **clanServices** | Standalone clan services (`k3s`, `rke2`, `netif`, `routed-fabric`, `wireguard-mesh`); `SPEC.md` is its contract. Not consumed by home yet; the Kubernetes machines still live in andrewthomaslee/borg. | Machines, real values |
-| **azure-infra** | One Azure Windows/SQL Server VM with terranix and OpenTofu; its own plan/apply gates (its `AGENTS.md` and the `azure-infra` skill). | Secrets, state names, subscription or tenant ids |
-| **explain-kube-to-me** | A plain-language Kubernetes explainer (site and deck), where the org style was built. | Code |
-| **presenting** | Retired; its builder is pkgs `flakeModules.docs`. | New features |
+
+Every other repo in the org is **standalone**: a project of its own
+that follows the same standard and consumes pkgs, and that nothing
+consumes. Its `AGENTS.md` says what it is.
 
 How the links work:
 
@@ -160,8 +161,8 @@ than doing it unasked.
   merge order, monthly cost for infrastructure.
 - **Agents never merge, approve, bypass or deploy** (`clan machines
   update`, `nixos-rebuild`): report the command for the owner.
-- **Infrastructure** (azure-infra): CI posts the plan, the owner sees it
-  before any merge, applies run behind an environment approval.
+- **A repo with its own gates** (infrastructure plans and applies) says
+  so in its `AGENTS.md`; those gates come on top of these rules.
 
 ## Merge order across repos
 
@@ -174,7 +175,7 @@ upstream merges. Say the order in every PR of a cross-repo change.
 3. **skills, then modules** (`nix flake update skills`).
 4. **home last:** `nix flake update modules secrets` (and `org-pkgs`).
 
-clanServices and azure-infra consume pkgs only. To test before the
+clanServices and the standalone repos consume pkgs only. To test before the
 upstream merges:
 
 - **Locally**, one command only:
@@ -188,8 +189,8 @@ Never commit a `path:` lock.
 ## Migration state
 
 On the standard, or converging in an open PR: pkgs, skills, modules,
-not-secrets, secrets, home, explain-kube-to-me. Not yet: **azure-infra**
-(own workflows, dev partition, presenting) and **clanServices** (input
-named `pkgs`, presenting); leave both alone unless asked. not-secrets
-and secrets have no org CI yet. Update this section in the PR that moves
+not-secrets, secrets, home. Not yet: **clanServices** (input named
+`pkgs`, old docs builder); leave it alone unless asked. not-secrets and
+secrets have no org CI yet. Some standalone repos are not converged
+either: check a repo's `flake.nix` before assuming the standard. Update this section in the PR that moves
 a repo; delete it when every repo is converged.

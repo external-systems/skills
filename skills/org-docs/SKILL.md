@@ -41,8 +41,7 @@ at `https://<repo>.external.systems/`. Never commit build output.
 
 ## The org style
 
-On by default (`docs.orgStyle.enable`), for site and deck alike. It is
-the look first built in external-systems/explain-kube-to-me:
+On by default (`docs.orgStyle.enable`), for site and deck alike:
 
 - **Palette:** clay-orange accent (`#d97757`, soft `#e8a48a`) on warm
   dark (`#1f1e1d`, deep `#141413`, surfaces `#2b2a27`/`#363430`) and
@@ -135,8 +134,8 @@ URLs are relative to the page (`use_directory_urls: false`): from
 - Commit build output (`result*`, `_site/`, `site/`,
   `documentation/site/`, HTML built from `slides.md`) or push `gh-pages`.
 - Copy the module, `inline-markdown.py`, a reveal.js, rough.js or
-  Mermaid copy, or a MkDocs Python env into a repo; add presenting or
-  mkdocs-flake as an input. A missing feature is a pkgs PR
+  Mermaid copy, or a MkDocs Python env into a repo; add another docs
+  flake as an input. A missing feature is a pkgs PR
   (`flakeModules/docs.nix`).
 - Load anything from a CDN in a deck or page: everything ships with the
   build, so it works offline and from `file://`.
