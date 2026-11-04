@@ -144,7 +144,8 @@ than doing it unasked.
   only, squash only, linear history, signed commits, no force-push or
   deletion, `ci / flake-check` required on an up-to-date branch. GitHub
   does not read the file: apply it with `gh api` (the reference). GitHub
-  Free: no org rulesets, no rulesets or Pages on private repos.
+  Free: no org rulesets, no rulesets or Pages on private repos; org-ci
+  skips Pages there by itself.
 
 ## Changing a repo
 
@@ -192,7 +193,7 @@ On the standard, or converging in an open PR: pkgs, skills, modules,
 not-secrets, secrets, home. Not yet: **clanServices** (input named
 `pkgs`, old docs builder); leave it alone unless asked. pkgs no longer
 tolerates the old docs builder, so the PR that next bumps org-pkgs in an
-unconverged repo also converges it. not-secrets and
-secrets have no org CI yet. Some standalone repos are not converged
-either: check a repo's `flake.nix` before assuming the standard. Update this section in the PR that moves
-a repo; delete it when every repo is converged.
+unconverged repo also converges it. Some standalone repos are not
+converged either: check a repo's `flake.nix` before assuming the
+standard. Update this section in the PR that moves a repo; delete it
+when every repo is converged.
