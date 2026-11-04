@@ -62,7 +62,7 @@ outputs = inputs:
     debug = true;
     imports = [
       (inputs.import-tree ./flake-parts)
-      inputs.mkdocs-flake.flakeModules.default
+      inputs.org-pkgs.flakeModules.default
       inputs.clan-core.flakeModules.default
       inputs.home-manager.flakeModules.home-manager
     ];
@@ -70,7 +70,7 @@ outputs = inputs:
 ```
 
 - `systems` and `debug` stay in `flake.nix`, not in tree files.
-- External flakeModules (clan-core, home-manager, mkdocs-flake) are
+- External flakeModules (clan-core, home-manager, org-pkgs) are
   imported **explicitly** alongside the tree — they are inputs, not repo
   modules, so they do not live under `flake-parts/`.
 

@@ -8,13 +8,13 @@ literals or tokens in any file. To add or wire a skill, load the
 `skills-repo` skill first; it has the full procedure.
 
 ## Layout
-- `flake.nix`: inputs (`nixpkgs`/`flake-parts` follow `external-systems/pkgs`; `skills-*` sources are `flake = false`) and the partition setup.
+- `flake.nix`: inputs (`nixpkgs`/`flake-parts` follow `external-systems/pkgs`; `skills-*` sources are `flake = false`) and the imports (`org-pkgs.flakeModules.default` brings treefmt, docs and slides, lock-sync).
 - `flake-module.nix`: everything consumers evaluate. `sources` (raw inputs), `ownGroups` (this repo's skills by group), `selections` (ready-made source lists), `externalSkills` presets (`base` = the `core` group and the default, `full`, `sandbox`), `mkSkillsTree`, `mkSkillsRuntime`, `packages.*`.
 - `lib/mk-skills.nix`: `mkSkills`/`skillSet`, a drop-in for the AGENTS flake's `mkSkills`. `lib/mk-skills-runtime.nix`: the runtime buildEnv. `lib/check-skill-metadata.py`: frontmatter validator.
 - `runtime/default.nix`: per-skill runtime needs (`packages`, `python`, `node`, `office`). `runtime/npm/`: npm modules on `NODE_PATH`.
-- `dev/flake.nix` + `dev/flake.lock`: dev-only inputs (treefmt-nix, presenting). `dev/flake-module.nix`: the `dev` flake-parts partition (pkgs `flakeModules.dev`, docs, skill gates, apps). Consumers never evaluate it.
+- `checks/flake-module.nix`: the skill gates (`checks.*`) and the `package-skills` and `skills-drift` apps. No dev partition and no dev inputs: formatting and docs come from org-pkgs.
 - `devenv.yaml` + `devenv.lock` + `devenv.nix`: the dev shell (devenv CLI; the org shell comes from external-systems/pkgs as `org-pkgs/devenv`). There is no flake devShell.
-- `documentation/`: the docs site (`docs/`) and slide deck (`slides/`).
+- `documentation/`: the docs site (`docs/`) and slide deck (`slides/slides.md`), built by `org-pkgs.flakeModules.docs`; `documentation/flake-module.nix` holds the `docs.*` settings.
 - `skills/<name>/SKILL.md`: this repo's skills, with optional `references/` and `runtime.nix`.
 
 ## Consumers

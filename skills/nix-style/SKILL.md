@@ -1,14 +1,19 @@
 ---
 name: nix-style
-description: "Nix code style, tool loop and the org flake standard (user preferences): attribute nesting/quoting/inherit rules, module-system and repo-root-path conventions, treefmt (alejandra, deadnix, statix, nixf-diagnose — the nixd editor diagnostics — shellcheck, sizelint) via external-systems/pkgs flakeModules, the devenv CLI shell (devenv.yaml importing org-pkgs/devenv), the dev flake-parts partition holding checks, formatter and MkDocs/reveal.js docs with its own dev/flake.lock, lock sync, the pkgs repo template, the org CI (ci.yml calling pkgs org-ci.yml, the default ruleset, Pages, releases), and the flake-repo agent contract. Use when writing or editing any .nix file, creating a new flake repo, or adding a formatter, linter, dev shell or docs to one."
+description: "How Nix code is written (user preferences): attribute nesting, key quoting, inherit and enable rules, module-system conventions, repo-root paths, flake-parts module file names, formatting and linting with treefmt (alejandra, deadnix, statix, nixf-diagnose, the nixd editor diagnostics), the mandatory fmt/check/build tool loop, working inside the dev shell, and the agent contract for editing a flake. Use when writing or editing any .nix file. How an org repo is laid out (inputs, CI, rulesets, PRs) is the external-systems skill; docs and slides are the org-docs skill."
 ---
 
 # nix-style — Nix code style and tool loop
 
-How to write and change Nix code in flake repos: the style guide, the
-mandatory verification tool loop, and the working rules. These are user
-preferences — apply them in any repo the owner works in, not just this
-one. Repo-specific facts live in each repo's `AGENTS.md`.
+How to write and change Nix code: the style guide, the mandatory
+verification tool loop, and the working rules. These are user
+preferences — apply them in any repo the owner works in, not just the
+org's. Repo-specific facts live in each repo's `AGENTS.md`.
+
+This skill is only about the code. How an org repo is put together (the
+one `org-pkgs` input, `flakeModules.default`, devenv, nixd settings, CI,
+rulesets, PRs) is the `external-systems` skill; the docs site and slide
+deck are the `org-docs` skill.
 
 ## Non-negotiables (flake repos)
 
@@ -24,107 +29,11 @@ one. Repo-specific facts live in each repo's `AGENTS.md`.
   come from a provisioning layer (sops-nix, clan vars, CI OIDC, GitHub
   Actions secrets), never from expressions — clan vars are documented in
   the `clan-core` skill.
-- Every flake repo follows the org flake standard: inputs follow
-  external-systems/pkgs, and checks, formatter, devShells and apps live
-  in a `dev` flake-parts partition with its own `dev/flake.nix` and
-  `dev/flake.lock`, so treefmt-nix, devenv and docs inputs never reach
-  the main `flake.lock`. See [Org flake standard](#org-flake-standard).
-- Every repo is a flake with docs and runs the org CI: a `ci.yml`
-  copied from pkgs that calls `org-ci.yml`, never per-repo workflow
-  logic. See [Org CI](#org-ci).
 - Never reach for `--impure`, `--no-sandbox`, `sandbox = false`, or
   `builtins.readFile /etc/...` to make something build. Impurity hides
   bugs, breaks FlakeHub Cache reproducibility, and fails on CI. If
   something needs the outside world, make it an input (a flake input, a
   store path, a test fixture) instead.
-
-## Org flake standard
-
-One shape for every flake repo, new or old. A developer needs Nix and
-devenv, nothing else. Start new repos with
-`nix flake init -t github:external-systems/pkgs`. Templates for every
-file, the lock-sync rules and the new-repo and converge procedures are
-in [references/flake-standard.md](references/flake-standard.md); load it
-before creating a flake repo or touching a repo's partition wiring,
-`dev/`, `devenv.yaml`/`devenv.nix` or `documentation/`.
-
-- **Inputs**: `org-pkgs.url = "github:external-systems/pkgs"`, with
-  `nixpkgs`, `flake-parts` and `import-tree` following `org-pkgs/*`.
-  The input is never named `pkgs` (in `flake.nix` or `devenv.yaml`):
-  `pkgs` always means the nixpkgs package set. Every
-  other input follows them where it can.
-- **Partition**: `partitionedAttrs` sends `apps`, `checks` and
-  `formatter` to `dev`; `partitions.dev = {module =
-  ./dev/flake-module.nix; extraInputsFlake = ./dev;}`. `packages` stay at
-  the root.
-- **Dev inputs** (`dev/flake.nix`, locked in `dev/flake.lock`):
-  `dev-nixpkgs`, `treefmt-nix`, `presenting`, and any test-only inputs.
-- **Shared flake module**: the dev partition imports
-  `inputs.org-pkgs.flakeModules.dev` (org linters via treefmt,
-  `checks.lock-sync`, `apps.sync-locks`, docs and slides as checks).
-  Never copy the treefmt program list into a repo.
-- **Dev shell = devenv CLI only**: `devenv.yaml` takes `org-pkgs`
-  (devenv would let an input named `pkgs` shadow nixpkgs' `pkgs`),
-  follows `org-pkgs/nixpkgs`, and imports `org-pkgs/devenv`
-  (the org shell: `fmt`,
-  `check`, `sync-locks`, `docs-build`, `docs`, `slides`; `devenv up`
-  serves docs on :8981 and slides on :8982). `devenv.nix` adds the repo's languages, services and
-  processes. No flake `devShells`, no `inputs.devenv.flakeModule`.
-- **Editor = nixd in every repo**: a committed `.vscode/settings.json`
-  (from the template) points nixd at the workspace flake itself
-  (`builtins.getFlake (builtins.toString ./.)`, never an absolute path):
-  nixpkgs from its own inputs, flake-parts options from `debug.options`
-  and `currentSystem.options` (`debug = true;` in `mkFlake`), NixOS
-  options, alejandra formatting. A repo with its own module system
-  overrides `options` in its copy. nixd comes from the org devenv shell
-  (`languages.nix.enable`), alejandra from its packages. See [nixd settings](references/flake-standard.md#nixd-settings).
-- **Docs and slides in every repo**: `documentation/flake-module.nix` imports
-  `inputs.presenting.flakeModules.default` (the `mkdocs-reveal` skill),
-  from the dev partition only. `nix build .#documentation` builds the
-  static site (via `legacyPackages`, partitioned to `dev`); open
-  `result/index.html` from disk.
-- **One nixpkgs across three locks**: `flake.lock`, `dev/flake.lock`,
-  `devenv.lock`. After `nix flake update org-pkgs`, run `sync-locks` in the
-  same commit.
-
-A repo that does not match yet still gets the style rules below; offer to
-converge it rather than doing it unasked.
-
-## Org CI
-
-Every org repo runs the same CI: external-systems/pkgs
-`.github/workflows/org-ci.yml`, called from a small `ci.yml`. Load
-[references/flake-standard.md](references/flake-standard.md#org-ci)
-before adding or changing any workflow, ruleset or Pages setting. The
-source of truth is pkgs `documentation/docs/ci.md` and `org-ci.yml`.
-
-- **Caller**: copy pkgs `templates/default/.github/workflows/ci.yml`
-  exactly. One job, id `ci` (never rename it: the status check is
-  `<caller job id> / <job id>`), `uses:
-  external-systems/pkgs/.github/workflows/org-ci.yml@main`, the four
-  permissions (`contents`, `actions`, `pages`, `id-token`: write),
-  `with: {major: W, minor: N}` and `secrets: inherit`.
-- **No per-repo workflow logic.** Delete old `check.yml`/`pages.yml`.
-  A CI change goes in pkgs `org-ci.yml` (as a PR there) and reaches every
-  repo; never add steps, jobs or inputs to a caller to work around it.
-- **Jobs**: `flake-check` (`nix flake check`, PRs, merge queue, main);
-  on `main` pushes, `deploy` (docs to GitHub Pages) and `release`
-  (`<major>.<minor>.<git rev-list --count HEAD>`, semver). `major` and
-  `minor` are 0 for a new repo, or continue a repo's existing series;
-  bump `major` for a breaking release and reset `minor` with it.
-- **Ruleset**: `.github/rulesets/default.json`, copied from the pkgs
-  template; it requires **`ci / flake-check`** (strict), squash-only,
-  linear history, signed commits, no force-push or deletion. GitHub does
-  not read the file: apply it with `gh api`, see the reference.
-- **Pages**: one-time Settings → Pages → Source: **GitHub Actions**.
-- **Private inputs** (e.g. external-systems/secrets): give the repo the
-  org variable `NIX_APP_CLIENT_ID` and the org secret
-  `NIX_APP_PRIVATE_KEY`, and set
-  `private-repos: secrets` (comma-separated, no owner) under `with:`.
-- Never commit build output (`result*`, `_site/`, `site/`: gitignored;
-  CI is the only publisher) and never use `pull_request_target`.
-- New repos start from `nix flake init -t github:external-systems/pkgs`,
-  which already has `ci.yml` and the ruleset.
 
 ## Style guide
 
@@ -329,7 +238,7 @@ eval channel, so the helper is always safe there.
 
 | File | Use |
 |---|---|
-| `<dir>/flake-module.nix` | The flake-parts module that is a directory's entry point, imported by explicit path (`./dev/flake-module.nix`, `../documentation/flake-module.nix`). Use it for directories that mix the module with other files (fixtures, docs, scripts, plain Nix) |
+| `<dir>/flake-module.nix` | The flake-parts module that is a directory's entry point, imported by explicit path (`./images/code-agent/flake-module.nix`). Use it for directories that mix the module with other files (fixtures, docs, scripts, plain Nix) |
 | `flake-parts/<concern>.nix` | Every file under an import-tree directory is a module; name it by what it defines (`packages.nix`, `overlays.nix`, `compositions.nix`). No entry file and no import list |
 | `flakeModules/<name>.nix` | A module this flake exports as `flakeModules.<name>` |
 
@@ -347,7 +256,8 @@ by concern when its repo is next converged.
 
 ### Formatting
 
-treefmt is the formatter (`nix fmt`, from `flakeModules.treefmt`). It
+treefmt is the formatter (`nix fmt`, from external-systems/pkgs
+`flakeModules.treefmt`, part of `flakeModules.default`). It
 runs alejandra (layout), deadnix (`no-lambda-pattern-names`), statix,
 nixf-diagnose (every rule, report only), shellcheck and sizelint in one
 pass. alejandra owns the
@@ -404,8 +314,8 @@ source by hand. The rules you will meet:
 Run it on its own with
 `nix run nixpkgs#nixf-diagnose -- $(git ls-files '*.nix')`. Treat an
 editor squiggle in a `.nix` file as a CI failure waiting to happen.
-nixd reads its settings from the repo's `.vscode/settings.json` (org
-flake standard); `diagnostic.suppress` there must stay empty, so the
+nixd reads its settings from the repo's `.vscode/settings.json` (the
+`external-systems` skill has the file); `diagnostic.suppress` there must stay empty, so the
 editor and CI agree.
 
 ### Agent-enforced conventions
@@ -418,7 +328,6 @@ What is convention the agent must enforce itself (CI cannot see it):
 - inherit consolidation
 - `relativeToRoot` for repo-root paths
 - `enable` (not `enabled`) for boolean toggles
-- the org flake standard (no dev-only input in the main lock)
 
 Fix violations in passing whenever you touch a file; write new code right
 the first time. When a rule and a linter disagree, the rule wins — and if

@@ -1,5 +1,11 @@
 # skills
 
+[![ci](https://img.shields.io/github/actions/workflow/status/external-systems/skills/ci.yml?branch=main&label=ci&logo=github)](https://github.com/external-systems/skills/actions/workflows/ci.yml)
+[![release](https://img.shields.io/github/v/release/external-systems/skills?label=release&color=d97757)](https://github.com/external-systems/skills/releases/latest)
+[![docs](https://img.shields.io/website?url=https%3A%2F%2Fskills.external.systems%2F&label=docs&up_message=online&down_message=offline)](https://skills.external.systems/)
+[![license](https://img.shields.io/github/license/external-systems/skills)](https://github.com/external-systems/skills/blob/main/LICENSE)
+[![built with Nix](https://img.shields.io/badge/built_with-Nix-5277C3?logo=nixos&logoColor=white)](https://nixos.org)
+
 Agent skills for the external-systems fleet: the `SKILL.md` tree, the
 external skill sources, and the composed skills dir every AI coding agent
 symlinks (opencode `~/.config/opencode/skills`, pi `~/.agents/skills`,
@@ -9,21 +15,20 @@ kimi-code `~/.kimi-code/skills`, claude-code `~/.claude/skills`, and
 ## Layout
 
 ```
-flake.nix               # inputs (nixpkgs + flake-parts follow the org-pkgs input), partitions
+flake.nix               # inputs (nixpkgs + flake-parts follow the org-pkgs input), imports
 flake-module.nix        # lib.* and packages.* (what consumers evaluate)
 lib/mk-skills.nix       # mkSkills: compose skill dirs into one linkFarm
 lib/check-skill-metadata.py  # SKILL.md frontmatter validator
-dev/flake.nix           # dev-only inputs, locked in dev/flake.lock
-dev/flake-module.nix    # dev partition: org-pkgs flakeModules.dev, docs, gates, apps
+checks/flake-module.nix # skill gates and the package-skills / skills-drift apps
 devenv.yaml devenv.nix  # the dev shell (devenv CLI, org shell from pkgs)
 documentation/          # docs site and slide deck
 skills/<name>/SKILL.md  # this repo's skills
 ```
 
-Checks, apps, the formatter and docs live in the `dev` flake-parts
-partition, so a consumer reading `lib` or `packages` never evaluates them
-or fetches their inputs. The repo follows the org flake standard (the
-`nix-style` skill).
+The formatter, lock-sync and docs come from `org-pkgs.flakeModules.default`,
+so this repo has no dev partition and no dev-only inputs: everything
+they need is already in the org-pkgs lock. The repo follows the org standard (the
+`external-systems` skill).
 
 ## Develop
 
@@ -66,8 +71,9 @@ verify the installed set after changing a selection.
 
 Every source lives here as an input; consumers never add `skills-*`
 inputs of their own. Each home-manager user gets the `base` preset (the
-`core` group: baton-pass, clan-core, devenv, flakeparts, import-tree,
-mkdocs-reveal, nix-style, org-repos, remote-builder, skills-repo) and picks extras in their profile (the agents
+`core` group: baton-pass, clan-core, devenv, external-systems, flakeparts, import-tree,
+nix-style, org-docs, remote-builder,
+skills-repo) and picks extras in their profile (the agents
 module lives in external-systems/modules). List own groups before
 external sources so own skills keep winning name collisions:
 
@@ -124,7 +130,7 @@ pi and kimi-code parse the frontmatter with JS YAML libraries that reject a
 with "nested mappings are not allowed in compact mappings" (pi) /
 "bad indentation of a mapping entry" (kimi) and the skill is **silently
 skipped** (kimi logs `Skipping invalid skill`; pi reports a skill conflict).
-`checks.skill-frontmatter` (`dev/flake-module.nix`) fails `nix flake check`
+`checks.skill-frontmatter` (`checks/flake-module.nix`) fails `nix flake check`
 on unparseable frontmatter, so CI catches it before hosts or the sandbox
 image pick the skill up. Names, descriptions, and titles must also avoid
 XML-like angle-bracket markup; the shared validator rejects it, and the
@@ -178,10 +184,10 @@ Workflow / behavior skills:
   where the session stopped, or resume from an existing handoff.
   Language- and repo-agnostic.
 
-- `org-repos` — map of the external-systems org: what home, pkgs,
-  modules, skills, secrets, not-secrets, clanServices and presenting
-  each own, which flake consumes which, the `~/external-systems/<repo>`
-  clone layout, and the order to bump inputs across repos.
+- `external-systems` — the org: what each repo owns, which flake
+  consumes which, the `~/external-systems/<repo>` clones, the repo
+  standard (org-pkgs, flakeModules.default, devenv, CI, ruleset), PRs and
+  merge order across repos.
 
 - `skills-repo` — how this repo, external-systems/modules and
   external-systems/home ship skills: writing an own skill, importing an
@@ -190,9 +196,9 @@ Workflow / behavior skills:
 Repo knowledge skills (deep "how things work" docs, loaded on demand by
 their description):
 
-- `nix-style` — Nix code style, the treefmt tool loop and the org flake
-  standard (pkgs flake modules, dev partition, devenv CLI shell, docs and
-  slides) (user preferences).
+- `nix-style` — how Nix code is written: nesting, quoting, inherit,
+  module conventions, treefmt linters and the tool loop (user
+  preferences).
 - `flakeparts` — flake-parts module system mechanics, inputs, the
   lint gate, integrations.
 - `import-tree` — flake-parts auto-import via import-tree: mechanics,
@@ -245,10 +251,10 @@ their description):
   datastores, air gap, Cilium/Multus, NixOS/VM tests, k3d labs, and k3k.
 - `openebs` — OpenEBS 4.6.x Kubernetes CSI storage: engines, per-node
   prerequisites, StorageClasses, upgrades, troubleshooting.
-- `mkdocs-reveal` — add a MkDocs docs site + reveal.js slide deck to any
-  flake repo as build artifacts by consuming the
-  `external-systems/presenting` flake (flakeModules + lib.mkSlides, zero
-  boilerplate), or scaffold greenfield from its template.
+- `org-docs` — the docs site + slide deck every org repo gets from
+  external-systems/pkgs `flakeModules.docs`, and the org style: layout,
+  `docs.*` options, slide building blocks, sketch diagrams, Mermaid,
+  overrides, how the module works.
 - `kubenix` — render Kubernetes manifests with the Nix module system
   (hall/kubenix): typed resources, helm chart inflation, Nix-built OCI
   images + skopeo push, CRDs/typed custom resources, secrets via

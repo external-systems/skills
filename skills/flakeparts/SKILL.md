@@ -1,6 +1,6 @@
 ---
 name: flakeparts
-description: "flake-parts module system: mkFlake/perSystem mechanics, what the infra provides (self', inputs', flake, withSystem), input handling (follows, FlakeHub URLs, flake = false pins), the checks.lint gate, and integrations (clan-core, home-manager, devenv, mkdocs-flake). Load when editing flake.nix or any flake-parts module."
+description: "flake-parts module system: mkFlake/perSystem mechanics, what the infra provides (self', inputs', flake, withSystem), input handling (follows, FlakeHub URLs, flake = false pins), the checks.lint gate, and integrations (clan-core, home-manager, devenv, org-pkgs flakeModules.docs). Load when editing flake.nix or any flake-parts module."
 ---
 
 # flake-parts
@@ -34,7 +34,7 @@ outputs = inputs:
       (inputs.import-tree ./flake-parts)   # auto-import the tree (see below)
       inputs.clan-core.flakeModules.default
       inputs.home-manager.flakeModules.home-manager
-      inputs.mkdocs-flake.flakeModules.default
+      inputs.org-pkgs.flakeModules.default
     ];
   };
 ```
@@ -102,8 +102,8 @@ purely organizational (`flake-parts/packages/foo.nix` defines
 ## The lint gate
 
 The org gate is `checks.treefmt` from `inputs.org-pkgs.flakeModules.treefmt`,
-imported in the repo's `dev` partition (the `nix-style` skill's org
-flake standard). The hand-rolled form below is legacy, kept for repos
+imported through `flakeModules.default` at the root (the `external-systems`
+skill). The hand-rolled form below is legacy, kept for repos
 not yet converged — do not add it to new repos.
 
 Legacy: format/lint as a hard `checks.lint` derivation — fails `nix
@@ -141,7 +141,7 @@ day-to-day loop using these tools: the `nix-style` skill.
 | clan-core | `inputs.clan-core.flakeModules.default` adds the `clan` option (fleet, clanServices, vars) | `clan-core` |
 | home-manager | `inputs.home-manager.flakeModules.home-manager` evaluates `homeConfigurations` and provides options; NixOS-side HM runs via `nixosModules.home-manager` instead | `home-manager` |
 | devenv | `inputs.devenv.flakeModule` embeds the devenv module system in `nix develop` | `devenv` |
-| mkdocs-flake | `inputs.mkdocs-flake.flakeModules.default` gives `documentation.*` options (`documentation.mkdocs-root`) | — |
+| org-pkgs docs | `inputs.org-pkgs.flakeModules.docs` (or `.dev`) gives `docs.*` options: MkDocs site + reveal.js deck (the `org-docs` skill); replaces mkdocs-flake | `org-pkgs` |
 
 Other common flake-parts integrations worth knowing: `gitea`,
 `hercules-ci`, `pre-commit`/git-hooks, `nixvim`, `nix-darwin`.

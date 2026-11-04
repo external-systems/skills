@@ -68,25 +68,11 @@
       ];
 
       imports = [
-        inputs.flake-parts.flakeModules.partitions
+        # treefmt, docs and slides, lock-sync (checks, formatter, apps).
+        inputs.org-pkgs.flakeModules.default
         ./flake-module.nix
+        ./checks/flake-module.nix
+        ./documentation/flake-module.nix
       ];
-
-      # Apps, checks, the formatter and docs are evaluated only on demand;
-      # a consumer reading lib or packages never fetches the dev inputs
-      # (dev/flake.nix). The dev shell is devenv (devenv.yaml), not a
-      # flake output.
-      partitionedAttrs = {
-        apps = "dev";
-        checks = "dev";
-        formatter = "dev";
-        # Docs/slides: `nix build .#documentation` (pkgs flakeModules.dev).
-        legacyPackages = "dev";
-      };
-
-      partitions.dev = {
-        module = ./dev/flake-module.nix;
-        extraInputsFlake = ./dev;
-      };
     };
 }

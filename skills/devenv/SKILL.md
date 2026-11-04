@@ -73,7 +73,7 @@ no `devShells`. The flake keeps compatibility through
 `checks.lock-sync` (devenv.lock's nixpkgs must equal flake.lock's) and
 the `sync-locks` app/script that re-pins `devenv.yaml` and runs
 `devenv update org-pkgs`. Never name a devenv input `pkgs`: every
-input becomes a module argument and would shadow nixpkgs' `pkgs`. Templates and procedures: the `nix-style` skill's
+input becomes a module argument and would shadow nixpkgs' `pkgs`. Templates and procedures: the `external-systems` skill's
 `references/flake-standard.md`; new repos start from
 `nix flake init -t github:external-systems/pkgs`.
 
