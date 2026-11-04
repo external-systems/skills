@@ -11,7 +11,7 @@ Read this when debugging a build or changing the module. Source:
 ../flakeModules/docs.nix {orgInputs = inputs;}`: the module sees pkgs'
 own `reveal-js` input, so consumers declare none. Each exported module
 has a `key`, so importing `flakeModules.docs` next to
-`flakeModules.dev` (which imports it) does not declare options twice.
+`flakeModules.default` (which imports it) does not declare options twice.
 pkgs' own dev partition imports the files by path with the same
 `orgInputs` (reading `self.flakeModules` there would recurse).
 

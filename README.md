@@ -25,10 +25,10 @@ documentation/          # docs site and slide deck
 skills/<name>/SKILL.md  # this repo's skills
 ```
 
-The formatter, lock-sync and docs come from `org-pkgs.flakeModules.dev`,
+The formatter, lock-sync and docs come from `org-pkgs.flakeModules.default`,
 so this repo has no dev partition and no dev-only inputs: everything
 they need is already in the org-pkgs lock. The repo follows the org standard (the
-`org` skill).
+`external-systems` skill).
 
 ## Develop
 
@@ -71,8 +71,8 @@ verify the installed set after changing a selection.
 
 Every source lives here as an input; consumers never add `skills-*`
 inputs of their own. Each home-manager user gets the `base` preset (the
-`core` group: baton-pass, clan-core, devenv, flakeparts, import-tree,
-nix-style, org, org-docs, remote-builder,
+`core` group: baton-pass, clan-core, devenv, external-systems, flakeparts, import-tree,
+nix-style, org-docs, remote-builder,
 skills-repo) and picks extras in their profile (the agents
 module lives in external-systems/modules). List own groups before
 external sources so own skills keep winning name collisions:
@@ -184,9 +184,9 @@ Workflow / behavior skills:
   where the session stopped, or resume from an existing handoff.
   Language- and repo-agnostic.
 
-- `org` — the external-systems org: what each repo owns, which flake
+- `external-systems` — the org: what each repo owns, which flake
   consumes which, the `~/external-systems/<repo>` clones, the repo
-  standard (org-pkgs, flakeModules.dev, devenv, CI, ruleset), PRs and
+  standard (org-pkgs, flakeModules.default, devenv, CI, ruleset), PRs and
   merge order across repos.
 
 - `skills-repo` — how this repo, external-systems/modules and

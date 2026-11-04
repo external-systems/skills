@@ -18,7 +18,7 @@ snippets explain what the template contains.
 |---|---|
 | `inputs.org-pkgs.flakeModules.treefmt` | org linters: `formatter`, `checks.treefmt` |
 | `inputs.org-pkgs.flakeModules.docs` | MkDocs site + reveal.js deck: `packages.documentation`, `packages.slides`, `apps.watch-documentation`, `apps.serve-slides` (the `org-docs` skill) |
-| `inputs.org-pkgs.flakeModules.dev` (also `.default`) | treefmt + docs, `checks.lock-sync`, `apps.sync-locks`, `documentation`/`slides` as checks |
+| `inputs.org-pkgs.flakeModules.default` (also `.default`) | treefmt + docs, `checks.lock-sync`, `apps.sync-locks`, `documentation`/`slides` as checks |
 | `org-pkgs/devenv` (devenv.yaml `imports`) | the org shell: `fmt`, `check`, `sync-locks`, `docs-build`, `docs`, `slides` scripts; `devenv up` serves docs :8981 and slides :8982; `devenv test` gates |
 | `templates.default` | the whole layout below |
 
@@ -32,7 +32,7 @@ the docs module or the org shell into a repo.
 
 ```
 flake.nix / flake.lock      inputs follow org-pkgs; imports
-                            inputs.org-pkgs.flakeModules.dev
+                            inputs.org-pkgs.flakeModules.default
 flake-parts/                the repo's modules (import-tree), including
                             docs.nix (docs.* settings) and repo checks
 devenv.yaml / devenv.lock   the shell: org-pkgs input, nixpkgs follows
@@ -71,7 +71,7 @@ AGENTS.md, README.md, .gitignore (result*, .devenv*, devenv.local.nix,
 
       imports = [
         # treefmt, docs + slides, lock-sync: everything from pkgs.
-        inputs.org-pkgs.flakeModules.dev
+        inputs.org-pkgs.flakeModules.default
         (inputs.import-tree ./flake-parts)
       ];
     };
@@ -279,7 +279,7 @@ jobs:
 | `ci / deploy` | `main`, after the check | deploys the artifact to GitHub Pages |
 | `ci / release` | `main`, after the check | tags and releases `<major>.<minor>.<git rev-list --count HEAD>` |
 
-So `nix flake check` must build the docs (`flakeModules.dev` adds
+So `nix flake check` must build the docs (`flakeModules.default` adds
 `documentation`/`slides` as checks), and
 `.#documentation` must exist: every repo has docs.
 

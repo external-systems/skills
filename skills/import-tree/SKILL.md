@@ -62,7 +62,7 @@ outputs = inputs:
     debug = true;
     imports = [
       (inputs.import-tree ./flake-parts)
-      inputs.org-pkgs.flakeModules.dev
+      inputs.org-pkgs.flakeModules.default
       inputs.clan-core.flakeModules.default
       inputs.home-manager.flakeModules.home-manager
     ];

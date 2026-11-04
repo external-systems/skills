@@ -8,7 +8,7 @@ literals or tokens in any file. To add or wire a skill, load the
 `skills-repo` skill first; it has the full procedure.
 
 ## Layout
-- `flake.nix`: inputs (`nixpkgs`/`flake-parts` follow `external-systems/pkgs`; `skills-*` sources are `flake = false`) and the imports (`org-pkgs.flakeModules.dev` brings treefmt, docs and slides, lock-sync).
+- `flake.nix`: inputs (`nixpkgs`/`flake-parts` follow `external-systems/pkgs`; `skills-*` sources are `flake = false`) and the imports (`org-pkgs.flakeModules.default` brings treefmt, docs and slides, lock-sync).
 - `flake-module.nix`: everything consumers evaluate. `sources` (raw inputs), `ownGroups` (this repo's skills by group), `selections` (ready-made source lists), `externalSkills` presets (`base` = the `core` group and the default, `full`, `sandbox`), `mkSkillsTree`, `mkSkillsRuntime`, `packages.*`.
 - `lib/mk-skills.nix`: `mkSkills`/`skillSet`, a drop-in for the AGENTS flake's `mkSkills`. `lib/mk-skills-runtime.nix`: the runtime buildEnv. `lib/check-skill-metadata.py`: frontmatter validator.
 - `runtime/default.nix`: per-skill runtime needs (`packages`, `python`, `node`, `office`). `runtime/npm/`: npm modules on `NODE_PATH`.

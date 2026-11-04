@@ -8,8 +8,8 @@ description: "The docs site and slide deck every external-systems repo has, and 
 Every org repo has a website and a slide deck, built by Nix from plain
 Markdown with zero npm: a MkDocs (Material) site with the deck embedded
 at `/slides/`. All build logic and the org style live in
-external-systems/pkgs `flakeModules.docs` (part of `flakeModules.dev`,
-which every repo imports: the `org` skill). A repo writes
+external-systems/pkgs `flakeModules.docs` (part of `flakeModules.default`,
+which every repo imports: the `external-systems` skill). A repo writes
 Markdown and at most a few `docs.*` settings.
 
 ## Layout, by convention

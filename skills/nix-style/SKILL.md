@@ -1,6 +1,6 @@
 ---
 name: nix-style
-description: "How Nix code is written (user preferences): attribute nesting, key quoting, inherit and enable rules, module-system conventions, repo-root paths, flake-parts module file names, formatting and linting with treefmt (alejandra, deadnix, statix, nixf-diagnose, the nixd editor diagnostics), the mandatory fmt/check/build tool loop, working inside the dev shell, and the agent contract for editing a flake. Use when writing or editing any .nix file. How an org repo is laid out (inputs, CI, rulesets, PRs) is the org skill; docs and slides are the org-docs skill."
+description: "How Nix code is written (user preferences): attribute nesting, key quoting, inherit and enable rules, module-system conventions, repo-root paths, flake-parts module file names, formatting and linting with treefmt (alejandra, deadnix, statix, nixf-diagnose, the nixd editor diagnostics), the mandatory fmt/check/build tool loop, working inside the dev shell, and the agent contract for editing a flake. Use when writing or editing any .nix file. How an org repo is laid out (inputs, CI, rulesets, PRs) is the external-systems skill; docs and slides are the org-docs skill."
 ---
 
 # nix-style — Nix code style and tool loop
@@ -11,8 +11,8 @@ preferences — apply them in any repo the owner works in, not just the
 org's. Repo-specific facts live in each repo's `AGENTS.md`.
 
 This skill is only about the code. How an org repo is put together (the
-one `org-pkgs` input, `flakeModules.dev`, devenv, nixd settings, CI,
-rulesets, PRs) is the `org` skill; the docs site and slide
+one `org-pkgs` input, `flakeModules.default`, devenv, nixd settings, CI,
+rulesets, PRs) is the `external-systems` skill; the docs site and slide
 deck are the `org-docs` skill.
 
 ## Non-negotiables (flake repos)
@@ -257,7 +257,7 @@ by concern when its repo is next converged.
 ### Formatting
 
 treefmt is the formatter (`nix fmt`, from external-systems/pkgs
-`flakeModules.treefmt`, part of `flakeModules.dev`). It
+`flakeModules.treefmt`, part of `flakeModules.default`). It
 runs alejandra (layout), deadnix (`no-lambda-pattern-names`), statix,
 nixf-diagnose (every rule, report only), shellcheck and sizelint in one
 pass. alejandra owns the
@@ -315,7 +315,7 @@ Run it on its own with
 `nix run nixpkgs#nixf-diagnose -- $(git ls-files '*.nix')`. Treat an
 editor squiggle in a `.nix` file as a CI failure waiting to happen.
 nixd reads its settings from the repo's `.vscode/settings.json` (the
-`org` skill has the file); `diagnostic.suppress` there must stay empty, so the
+`external-systems` skill has the file); `diagnostic.suppress` there must stay empty, so the
 editor and CI agree.
 
 ### Agent-enforced conventions

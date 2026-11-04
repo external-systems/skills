@@ -69,7 +69,7 @@
 
       imports = [
         # treefmt, docs and slides, lock-sync (checks, formatter, apps).
-        inputs.org-pkgs.flakeModules.dev
+        inputs.org-pkgs.flakeModules.default
         ./flake-module.nix
         ./checks/flake-module.nix
         ./documentation/flake-module.nix

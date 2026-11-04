@@ -1,9 +1,9 @@
 ---
-name: org
-description: "The owner's external-systems GitHub org: which repo owns what (pkgs, skills, modules, not-secrets, secrets, home, clanServices, azure-infra, explain-kube-to-me), where clones live, which repo a change belongs in, and how every repo is built and changed: the one org-pkgs input and flakeModules.dev, the devenv shell, nixd settings, lock sync, AGENTS.md, badges, the org CI (ci.yml calling pkgs org-ci.yml, Pages, releases), the branch ruleset, commits and pull requests, and the merge order across repos. Load before working in any org repo: creating or converging one, editing flake.nix wiring, devenv.yaml, .vscode, CI, rulesets or Pages, deciding where a package, module, skill, value or clan service goes, or opening, describing or sequencing PRs."
+name: external-systems
+description: "The owner's external-systems GitHub org: which repo owns what (pkgs, skills, modules, not-secrets, secrets, home, clanServices, azure-infra, explain-kube-to-me), where clones live, which repo a change belongs in, and how every repo is built and changed: the one org-pkgs input and flakeModules.default, the devenv shell, nixd settings, lock sync, AGENTS.md, badges, the org CI (ci.yml calling pkgs org-ci.yml, Pages, releases), the branch ruleset, commits and pull requests, and the merge order across repos. Load before working in any org repo: creating or converging one, editing flake.nix wiring, devenv.yaml, .vscode, CI, rulesets or Pages, deciding where a package, module, skill, value or clan service goes, or opening, describing or sequencing PRs."
 ---
 
-# org — the external-systems repos
+# external-systems — the org's repos
 
 The owner's Nix setup is split across flakes in the **external-systems**
 GitHub org. Each repo has one job, every repo has the same shape and CI,
@@ -20,7 +20,7 @@ a cloud session check the working directory first.
 ```
                     pkgs  (input name: org-pkgs)
    nixpkgs, flake-parts, import-tree, overlays, packages,
-   flakeModules.dev, the devenv shell, the repo template
+   flakeModules.default, the devenv shell, the repo template
         |               |              |            |
      skills        not-secrets    clanServices   every repo's
         |               |         azure-infra    flake.nix and
@@ -38,7 +38,7 @@ machines.
 
 | Repo | Owns | Never holds |
 |---|---|---|
-| **pkgs** | The single nixpkgs, flake-parts and import-tree every repo follows. Packages and `overlays.{default,kubernetes,ifstate,tools}`, the code-agent image, `flakeModules.{docs,dev}`, the org devenv shell (`org-pkgs/devenv`), the repo template, `org-ci.yml`. | Inventory, clan vars, fleet policy |
+| **pkgs** | The single nixpkgs, flake-parts and import-tree every repo follows. Packages and `overlays.{default,kubernetes,ifstate,tools}`, the code-agent image, `flakeModules.default` (also `.treefmt`, `.docs`), the org devenv shell (`org-pkgs/devenv`), the repo template, `org-ci.yml`. | Inventory, clan vars, fleet policy |
 | **skills** | Every agent skill (`skills/`), external sources as `skills-*` inputs, presets, `mkSkillsTree`, `mkSkillsRuntime`, the skill checks and apps. See the `skills-repo` skill. | Secrets, IPs, hostnames |
 | **modules** | Reusable NixOS (`nixosModules.*`, `hostSpec.*`) and home-manager (`homeModules.*`, `homeSpec.*`) modules, all off until enabled. `homeModules.agents` installs the skills tree. | Machines, users, packages, IPs, account ids |
 | **not-secrets** | The values schema, `lib`, `flakeModules.{values,checks}`, public placeholder values (RFC 5737/3849/7042/2606 ranges only). | Any real value (`checks.placeholders-only`) |
@@ -91,7 +91,7 @@ repos start from `nix flake init -t github:external-systems/pkgs`.
   every other input follows those where it can. Never name it `pkgs`
   (the nixpkgs package set; clanServices is the legacy exception). One
   nixpkgs for the org: no second nixpkgs, no `pkgs.unstable`.
-- **Imports `inputs.org-pkgs.flakeModules.dev`**: treefmt (formatter,
+- **Imports `inputs.org-pkgs.flakeModules.default`**: treefmt (formatter,
   `checks.treefmt`), docs and slides as checks, `checks.lock-sync`,
   `apps.sync-locks`. Never copy them into a repo; a missing feature is a
   pkgs PR.

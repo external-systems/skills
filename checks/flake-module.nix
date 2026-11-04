@@ -1,6 +1,6 @@
 # The skill gates (checks) and the package-skills and skills-drift apps
 # they exercise. Treefmt, lock-sync and docs come from
-# org-pkgs.flakeModules.dev (flake.nix).
+# org-pkgs.flakeModules.default (flake.nix).
 {
   lib,
   self,

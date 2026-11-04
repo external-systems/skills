@@ -34,7 +34,7 @@ outputs = inputs:
       (inputs.import-tree ./flake-parts)   # auto-import the tree (see below)
       inputs.clan-core.flakeModules.default
       inputs.home-manager.flakeModules.home-manager
-      inputs.org-pkgs.flakeModules.dev
+      inputs.org-pkgs.flakeModules.default
     ];
   };
 ```
@@ -102,7 +102,7 @@ purely organizational (`flake-parts/packages/foo.nix` defines
 ## The lint gate
 
 The org gate is `checks.treefmt` from `inputs.org-pkgs.flakeModules.treefmt`,
-imported through `flakeModules.dev` at the root (the `org`
+imported through `flakeModules.default` at the root (the `external-systems`
 skill). The hand-rolled form below is legacy, kept for repos
 not yet converged — do not add it to new repos.
 
