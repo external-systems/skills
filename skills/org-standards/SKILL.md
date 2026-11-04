@@ -49,6 +49,12 @@ before creating a repo or changing a repo's wiring, `devenv.yaml`,
 - **Keeps one nixpkgs across `flake.lock` and `devenv.lock`.** After
   `nix flake update org-pkgs`, run `sync-locks` in the same commit; never
   move nixpkgs with a bare `devenv update`.
+- **Shows the org badge row** (shields.io: ci, release, docs, license,
+  built with Nix) under the title of `README.md` and
+  `documentation/docs/index.md`, as in the pkgs template. Drop a badge
+  whose source the repo lacks yet (no CI, no releases, no Pages).
+  Private repos (secrets, gitops) get none: shields.io sees a private
+  repo as missing. Details: pkgs docs, "Org flake standard", Badges.
 - **Has `AGENTS.md`** (sections: what the repo is, Layout, Build and
   check or Tool loop, Rules) and a `CLAUDE.md` that is `@AGENTS.md`.
   Keep both in step with the code in the same PR.

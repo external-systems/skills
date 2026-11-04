@@ -1,5 +1,11 @@
 # skills
 
+[![ci](https://img.shields.io/github/actions/workflow/status/external-systems/skills/ci.yml?branch=main&label=ci&logo=github)](https://github.com/external-systems/skills/actions/workflows/ci.yml)
+[![release](https://img.shields.io/github/v/release/external-systems/skills?label=release&color=d97757)](https://github.com/external-systems/skills/releases/latest)
+[![docs](https://img.shields.io/website?url=https%3A%2F%2Fskills.external.systems%2F&label=docs&up_message=online&down_message=offline)](https://skills.external.systems/)
+[![license](https://img.shields.io/github/license/external-systems/skills)](https://github.com/external-systems/skills/blob/main/LICENSE)
+[![built with Nix](https://img.shields.io/badge/built_with-Nix-5277C3?logo=nixos&logoColor=white)](https://nixos.org)
+
 Agent skills for the external-systems fleet: the `SKILL.md` tree, the
 external skill sources, and the composed skills dir every AI coding agent
 symlinks (opencode `~/.config/opencode/skills`, pi `~/.agents/skills`,
