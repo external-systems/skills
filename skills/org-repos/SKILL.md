@@ -1,6 +1,6 @@
 ---
 name: org-repos
-description: "Map of the owner's external-systems GitHub org: which repo owns what (home, pkgs, modules, skills, secrets, not-secrets, clanServices; presenting is retired), which flake consumes which, where clones live on disk (~/external-systems/REPO), and which repo a change belongs in. Load when asked how the repos fit together, where a package, module, skill, IP address or clan service should go, which repo to edit or open a PR in, how to test a change across repos, or in what order to bump flake inputs after a change."
+description: "Map of the owner's external-systems GitHub org: which repo owns what (home, pkgs, modules, skills, secrets, not-secrets, clanServices, azure-infra, explain-kube-to-me; presenting is retired), which flake consumes which, where clones live on disk (~/external-systems/REPO), and which repo a change belongs in, and the merge order across repos. Load when asked how the repos fit together, where a package, module, skill, IP address or clan service should go, which repo to edit or open a PR in, how to test a change across repos, or in what order to merge PRs and bump flake inputs after a change."
 ---
 
 # org-repos
@@ -20,7 +20,8 @@ Every org repo is cloned into the user's home directory under
 ~/external-systems/home          ~/external-systems/modules
 ~/external-systems/pkgs          ~/external-systems/skills
 ~/external-systems/secrets       ~/external-systems/not-secrets
-~/external-systems/clanServices  ~/external-systems/presenting (retired)
+~/external-systems/clanServices  ~/external-systems/azure-infra
+~/external-systems/explain-kube-to-me
 ```
 
 Note the capital S in `clanServices`. Look there before cloning anything.
@@ -66,7 +67,9 @@ users or IPs, and only home names machines.
 | **not-secrets** | The values schema, `lib`, `flakeModules.{values,checks}` and public placeholder values (RFC 5737/3849/7042/2606 ranges only), so `nix flake show` and public evaluation always work. | Any real value (`checks.placeholders-only`) |
 | **secrets** | Private. Only `values/`: the real addresses, interfaces, MACs, deploy targets, storage box ids. Imports not-secrets for the schema and guards. | Credentials (keys, tokens, passwords go in clan vars) |
 | **clanServices** | Standalone custom clan services: `k3s`, `rke2`, `netif` (IfState host links), `routed-fabric`, `wireguard-mesh`. `SPEC.md` is its contract. Uses pkgs for runtimes and airgap artifacts, and re-exports its overlays. | Machines, real values |
-| **presenting** | Retired: its docs and slides builder moved into pkgs `flakeModules.docs`. Repos still importing it migrate (the `org-docs` skill), then it is archived. | New features |
+| **azure-infra** | One Azure Windows/SQL Server VM, terranix + OpenTofu, its own plan/apply workflows behind an environment approval. Public; its `AGENTS.md` and the `azure-infra` skill rule. | Secrets, state names, subscription or tenant ids |
+| **explain-kube-to-me** | A plain-language Kubernetes explainer (site and deck); where the org style was first built. | Code |
+| **presenting** | Retired: the docs and slides builder now lives in pkgs `flakeModules.docs`. | New features |
 
 ## How the links work
 
@@ -83,8 +86,7 @@ users or IPs, and only home names machines.
   `dev/flake.nix`, no dev partition (pkgs alone keeps one, for the
   code-agent image). The shell is the devenv CLI importing
   `org-pkgs/devenv` (`fmt`, `check`, `sync-locks`, `docs-build`). See the
-  `org-standards` and `org-docs` skills; branches, PRs and merge order
-  across repos are in `org-standards`.
+  `org-standards` (repo shape, CI, PRs) and `org-docs` skills.
 - **skills reaches machines through modules.** modules has a `skills`
   input; `homeModules.agents` calls `inputs.skills.lib.mkSkillsTree` with
   each user's `homeSpec.agents.skills.{preset,extraSources}`. pkgs' dev
@@ -109,11 +111,13 @@ users or IPs, and only home names machines.
 
 ## Migration state
 
-The split was in flight when this skill was written. home's `main` may
-still be the old monolith (its own skills, overlays, packages and
-`agents` input); the target layout above is home PR #2 ("Migrate home
-onto the org flakes"). Check home's `flake.nix` before relying on either
-shape, and fix this skill in the same PR if the map has moved.
+On the org standard, or converging in an open PR: pkgs, skills, modules,
+not-secrets, secrets, home, explain-kube-to-me. Not yet: **azure-infra**
+(own workflows, dev partition, presenting) and **clanServices** (input
+still named `pkgs`, presenting); leave both alone unless asked.
+not-secrets and secrets have no org CI yet. presenting is archived once
+nothing imports it. Update this section in the PR that moves a repo, and
+delete it when every repo is converged.
 
 ## Where a change goes
 
@@ -128,28 +132,30 @@ shape, and fix this skill in the same PR if the map has moved.
 | A machine, a user profile, an inventory instance, which skills a user gets | home |
 | The docs/slides builder itself | pkgs (`flakeModules/docs.nix`) |
 
-## Changing several repos
+## Merge order across repos
 
-Work from the top of the chain down, one PR per repo, and bump each
-consumer after its dependency merges:
+One PR per repo, upstream first; each consumer bumps its input in its
+own PR after the upstream merges:
 
-1. pkgs (if touched). Bumping `org-pkgs` anywhere moves nixpkgs, so run
-   `sync-locks` in the same commit to keep `flake.lock` and `devenv.lock`
-   on one nixpkgs (`checks.lock-sync`).
-2. not-secrets, then secrets (`nix flake update not-secrets` there).
-3. skills, then modules (`nix flake update skills`).
-4. home: `nix flake update modules secrets` (and `org-pkgs` if it moved).
+1. **pkgs.** Consumers run `nix flake update org-pkgs`, then `sync-locks`
+   in the same commit (one nixpkgs in `flake.lock` and `devenv.lock`).
+2. **not-secrets, then secrets** (`nix flake update not-secrets`).
+3. **skills, then modules** (`nix flake update skills`).
+4. **home last:** `nix flake update modules secrets` (and `org-pkgs`).
 
-To try an unmerged change before its PR lands, point the consumer at the
-local clone for one command only:
+clanServices and azure-infra consume pkgs only. Say the merge order in
+every PR of a cross-repo change.
 
-```sh
-cd ~/external-systems/home
-nix flake check --override-input modules path:$HOME/external-systems/modules
-```
+To test before the upstream merges:
 
-Never commit an override (`nix flake lock --override-input`): it records a
-local path, or the private secrets revision, in a public `flake.lock`.
+- **Locally**, for one command:
+  `nix flake check --override-input modules path:$HOME/external-systems/modules`.
+- **In the consumer PR's CI**, lock the upstream PR's head commit
+  (`nix flake lock --override-input org-pkgs github:external-systems/pkgs/<sha>`),
+  say so in the PR, and re-lock to `main` once the upstream merges.
+
+Never commit a `path:` lock: it records a local path in a public
+`flake.lock`.
 
 ## Rules
 

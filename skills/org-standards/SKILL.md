@@ -1,6 +1,6 @@
 ---
 name: org-standards
-description: "How every external-systems repo is structured and run: the one org-pkgs input and flakeModules.dev, no dev partition, the devenv shell, nixd settings, docs and a deck in every repo, lock sync, AGENTS.md, the org CI (ci.yml calling pkgs org-ci.yml, flake-check, Pages, releases), the default branch ruleset, and how branches, commits and pull requests work, including merge order across repos. Use when creating or converging a repo, touching flake.nix wiring, devenv.yaml, .vscode, CI, rulesets or Pages, or opening, describing or sequencing a PR in an org repo."
+description: "How every external-systems repo is structured and run: the one org-pkgs input and flakeModules.dev, no dev partition, the devenv shell, nixd settings, docs and a deck in every repo, lock sync, AGENTS.md, the org CI (ci.yml calling pkgs org-ci.yml, flake-check, Pages, releases), the default branch ruleset, and how branches, commits and pull requests work. Use when creating or converging a repo, touching flake.nix wiring, devenv.yaml, .vscode, CI, rulesets or Pages, or opening, describing or sequencing a PR in an org repo."
 ---
 
 # org-standards — how an org repo is built and changed
@@ -12,7 +12,7 @@ the deck and the org style). Which repo owns what is the `org-repos`
 skill. Repo-specific facts live in each repo's `AGENTS.md`.
 
 Templates for every file, the CI and ruleset details, and the new-repo
-and converge procedures are in
+procedure are in
 [references/flake-standard.md](references/flake-standard.md). Load it
 before creating a repo or changing a repo's wiring, `devenv.yaml`,
 `.vscode/`, `documentation/` layout, CI, ruleset or Pages.
@@ -67,8 +67,8 @@ before creating a repo or changing a repo's wiring, `devenv.yaml`,
   provisioning layer.
 
 New repos start from `nix flake init -t github:external-systems/pkgs`.
-A repo that does not match yet gets converged in its own PR (the
-reference's converge procedure); offer it rather than doing it unasked.
+A repo that does not match yet is converged to this shape in its own
+PR; offer it rather than doing it unasked.
 
 ## CI
 
@@ -102,7 +102,7 @@ private repos.
 - **Never push to `main`.** Every change is a branch and a PR; the
   ruleset enforces it.
 - **One concern per PR, one PR per repo.** A change that spans repos is
-  one PR in each, merged in dependency order (below).
+  one PR in each, merged in the order in the `org-repos` skill.
 - **Before pushing**: `git add -A`, `fmt`, `check` (or `nix fmt`,
   `nix flake check`), and build what you touched. Paste what you ran in
   the PR.
@@ -121,18 +121,3 @@ private repos.
   the plan, the owner sees it before any merge, applies run behind an
   environment approval. Read that repo's `AGENTS.md`.
 
-### Merge order across repos
-
-Inputs flow pkgs → skills → modules → secrets/not-secrets → home (and
-clanServices, azure-infra). When a change spans them:
-
-1. Merge the upstream PR first (usually pkgs).
-2. In each consumer, `nix flake update <input>` (`org-pkgs` plus
-   `sync-locks`), in that consumer's PR.
-3. If a consumer PR must be tested before the upstream merges, lock the
-   upstream PR's head commit
-   (`nix flake lock --override-input org-pkgs github:external-systems/pkgs/<sha>`),
-   say so in the PR, and re-lock to `main` after the upstream merges.
-
-not-secrets merges before secrets; skills before modules; modules and
-secrets before home.

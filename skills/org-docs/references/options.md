@@ -5,7 +5,7 @@ external-systems/pkgs, and its docs page "Docs and slides".
 
 | Option | Default | Meaning |
 | --- | --- | --- |
-| `enable` | `documentation/docs/` exists (and presenting not imported) | site + `apps.watch-documentation` |
+| `enable` | `documentation/docs/` exists | site + `apps.watch-documentation` |
 | `root` | `"${self}/documentation"` | documentation directory |
 | `path` | `root` relative to the repo | where the live preview serves from |
 | `repo` | `null` | org repo name: `site_url`, `repo_url`, `repo_name`, `edit_uri` |
@@ -15,7 +15,7 @@ external-systems/pkgs, and its docs page "Docs and slides".
 | `strict` | `true` | `mkdocs --strict` in build and preview |
 | `port` | `8981` | live docs preview |
 | `extraPythonPackages` | `ps: []` | more MkDocs plugins from `python3Packages` |
-| `slides.enable` | `documentation/slides/` exists (and presenting not imported) | deck + `apps.serve-slides` |
+| `slides.enable` | `documentation/slides/` exists | deck + `apps.serve-slides` |
 | `slides.dir` | `"${root}/slides"` | deck directory |
 | `slides.path` | `slides.dir` relative to the repo | where the live preview serves from |
 | `slides.embed` | `true` | copy the deck into the site at `slides/` |

@@ -91,10 +91,3 @@ speaker view's preview (it detects the `receiver` and
 main window's `Reveal.triggerKey`; the preview then follows the main
 window. Elsewhere it does nothing.
 
-## Transition guard
-
-`docs.enable` and `docs.slides.enable` default to false when perSystem
-has `options.documentation` (mkdocs-flake) or `options.presenting`, so a
-repo still on presenting can bump org-pkgs without two modules defining
-`packages.documentation`. Remove the guard once no repo imports
-presenting.

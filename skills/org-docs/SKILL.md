@@ -1,6 +1,6 @@
 ---
 name: org-docs
-description: "The docs site and slide deck every external-systems repo has, and the org style they share: external-systems/pkgs flakeModules.docs builds a MkDocs (Material) site and a reveal.js deck from plain Markdown with zero npm, in the org look (clay on warm dark and cream), with Mermaid, emoji, speaker-view sync and hand-drawn sketch diagrams. Covers the layout, the docs.* options, writing slides and the org building blocks, overrides, previews, Pages, how the module works, and migrating a repo. Load whenever the user mentions docs, MkDocs, reveal.js, slides, a deck, a presentation, diagrams, GitHub Pages or the org style in a Nix/flake repo, or the retired external-systems/presenting flake."
+description: "The docs site and slide deck every external-systems repo has, and the org style they share: external-systems/pkgs flakeModules.docs builds a MkDocs (Material) site and a reveal.js deck from plain Markdown with zero npm, in the org look (clay on warm dark and cream), with Mermaid, emoji, speaker-view sync and hand-drawn sketch diagrams. Covers the layout, the docs.* options, writing slides and the org building blocks, overrides, previews, Pages and how the module works. Load whenever the user mentions docs, MkDocs, reveal.js, slides, a deck, a presentation, diagrams, GitHub Pages or the org style in a Nix/flake repo."
 ---
 
 # org-docs — docs and slides in every org repo
@@ -11,10 +11,6 @@ at `/slides/`. All build logic and the org style live in
 external-systems/pkgs `flakeModules.docs` (part of `flakeModules.dev`,
 which every repo imports: the `org-standards` skill). A repo writes
 Markdown and at most a few `docs.*` settings.
-
-external-systems/presenting, its `presenting.slides.*` and
-`documentation.*` options, and mkdocs-flake are retired: see
-[Migrating a repo](#migrating-a-repo).
 
 ## Layout, by convention
 
@@ -133,29 +129,6 @@ against `docs/`, where `slides/` exists only mid-build.
 URLs are relative to the page (`use_directory_urls: false`): from
 `docs/index.md` it is `slides/index.html`, from `docs/a/page.md`
 `../slides/index.html`.
-
-## Migrating a repo
-
-From presenting, a dev partition or a hand-written config:
-
-1. `nix flake update org-pkgs`; import `inputs.org-pkgs.flakeModules.dev`
-   in `flake.nix`; drop the partition and `dev/` (the `org-standards`
-   skill's converge procedure).
-2. Port `mkdocs.yml` into `docs.settings` in `flake-parts/docs.nix` and
-   delete it. Drop what the org defaults already give (palette, Mermaid
-   and emoji extensions, offline, features); `!!python/name:` values
-   become strings.
-3. Delete a deck `index.html`, `speaker-sync.js`, `sketch.js` and any
-   vendored rough.js: the org style has them. Trim the deck's CSS to what
-   is its own and load it with `extraHead`; move `Reveal.initialize`
-   options to `docs.slides.config`.
-4. Fix deck links for `use_directory_urls: false` (`../slides/` from a
-   top-level page becomes `slides/`).
-5. `sync-locks`, `fmt`, `check`, `nix build .#documentation .#slides`;
-   open both and compare with the old build.
-
-While a repo still imports presenting, `docs.enable` and
-`docs.slides.enable` stay off, so bumping org-pkgs alone never breaks it.
 
 ## Never
 

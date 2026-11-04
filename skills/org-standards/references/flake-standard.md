@@ -78,12 +78,9 @@ AGENTS.md, README.md, .gitignore (result*, .devenv*, devenv.local.nix,
 }
 ```
 
-- No dev partition. The partition with its own `dev/flake.lock` existed
-  to keep dev-only inputs out of consumers' locks; with every dev tool
-  coming from org-pkgs, which every repo already locks, there are none
-  left. pkgs itself is the exception: its code-agent image needs
-  external-systems/modules, which depends on pkgs, so that one input sits
-  in pkgs' own dev partition.
+- No dev partition: every dev tool comes from org-pkgs, which every
+  repo already locks. pkgs alone keeps one, because its code-agent image
+  needs external-systems/modules, which depends on pkgs.
 - A repo that genuinely needs a dev-only input its consumers must not
   lock (a heavy test framework, say) asks first; then it adds a
   partition for that input alone, never for formatting or docs.
@@ -326,12 +323,10 @@ Once per repo: Settings → Pages → Build and deployment → Source:
 
 ## Two lockfiles, one nixpkgs
 
-`flake.lock` and `devenv.lock` must resolve nixpkgs to the same rev (pkgs,
-and a repo not yet migrated, also check `dev/flake.lock`'s
-`dev-nixpkgs`). `checks.lock-sync` fails when they drift and prints the
+`flake.lock` and `devenv.lock` must resolve nixpkgs to the same rev (pkgs also checks its `dev/flake.lock`). `checks.lock-sync` fails when they drift and prints the
 drifted locks. The fix is always `sync-locks` (devenv script, or
 `nix run .#sync-locks`): it pins the pkgs rev in `devenv.yaml` and runs
-`devenv update org-pkgs` (and re-locks `dev-nixpkgs` where it exists).
+`devenv update org-pkgs`.
 
 Bump flow: `nix flake update org-pkgs`, then `sync-locks`, in one commit.
 Never run a bare `devenv update` to move nixpkgs.
@@ -351,40 +346,3 @@ Never run a bare `devenv update` to move nixpkgs.
    devenv, presenting, mkdocs-flake or second nixpkgs (treefmt-nix and
    reveal-js appear once, under org-pkgs).
 
-## Procedure: converge an existing repo
-
-1. Root `flake.nix`: inputs follow `org-pkgs`; import
-   `inputs.org-pkgs.flakeModules.dev`. Remove any dev partition
-   (`flakeModules.partitions` import, `partitionedAttrs`,
-   `partitions.dev`) and `git rm -r dev/`, moving repo checks and apps
-   from `dev/flake-module.nix` into `flake-parts/`.
-2. Drop dev-only inputs (treefmt-nix, devenv, nix2container,
-   mk-shell-bin, mkdocs-flake, presenting, dev-nixpkgs, ...): pkgs
-   provides formatting and docs, and the devenv CLI replaces the flake
-   shell. Keep one only if a consumer-facing output needs it.
-3. Delete the hand-rolled `checks.lint`, `formatter = pkgs.alejandra`,
-   and every flake devShell (`devShells.default`, `devenv.shells.*`,
-   `inputs.devenv.flakeModule`); import `inputs.org-pkgs.flakeModules.dev`.
-4. Move the shell into `devenv.yaml` + `devenv.nix`: `mkShell` packages
-   become devenv `packages`, `shellHook` becomes `enterShell`, helper
-   scripts become `scripts`. Drop what `org-pkgs/devenv` already provides.
-5. Add `documentation/docs/` and `documentation/slides/slides.md` (copy
-   the template's, or move existing docs there). Port an existing
-   `mkdocs.yml` into `docs.settings` in `flake-parts/docs.nix` and delete
-   it, along with any `documentation/flake-module.nix` and deck
-   `index.html` (the `org-docs` skill, "Migrating a repo").
-6. Lock both (`nix flake lock`, `devenv update`), run `sync-locks`, then
-   `fmt` (expect a formatting diff the first time: commit it separately)
-   and `check`.
-7. Rename the input `pkgs` to `org-pkgs` (url, every follows path,
-   `inputs.org-pkgs.*` references) and run `nix flake lock`; downstream
-   flakes that override it (`<repo>.inputs.pkgs.follows`) must switch to
-   `<repo>.inputs.org-pkgs.follows`.
-8. Copy the template's `.vscode/` and add `debug = true;` to `mkFlake`;
-   replace absolute `/home/...` paths in an existing
-   `.vscode/settings.json` with `builtins.toString ./.` (see
-   [nixd settings](#nixd-settings)).
-9. Adopt the org CI ([Org CI](#org-ci)): add `ci.yml` and
-   `.github/rulesets/default.json` from the pkgs template, delete the old
-   workflows, gitignore `_site/` and `site/`.
-10. In the PR body, list which inputs left the main lock.
