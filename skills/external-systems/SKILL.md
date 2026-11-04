@@ -132,7 +132,7 @@ than doing it unasked.
 - **One CI:** `.github/workflows/ci.yml`, copied exactly from the pkgs
   template, calls pkgs `org-ci.yml`. One job, id `ci`, so the required
   check is **`ci / flake-check`** everywhere. Per repo only the `with:`
-  keys change: `major`, `minor`, `private-repos`.
+  keys change: `major`, `minor`, `private-repos`, `pages`.
 - `flake-check` runs `nix flake check` on PRs, the merge queue and
   `main`. On `main`, `deploy` publishes `.#documentation` to Pages
   (`<repo>.external.systems`) and `release` tags
@@ -144,8 +144,9 @@ than doing it unasked.
   only, squash only, linear history, signed commits, no force-push or
   deletion, `ci / flake-check` required on an up-to-date branch. GitHub
   does not read the file: apply it with `gh api` (the reference). GitHub
-  Free: no org rulesets, no rulesets or Pages on private repos; org-ci
-  skips Pages there by itself.
+  Free: no org rulesets, no rulesets or Pages on private repos.
+  `pages: false` under `with:` keeps a repo's docs unpublished
+  (secrets).
 
 ## Changing a repo
 
