@@ -28,7 +28,7 @@ skills/<name>/SKILL.md  # this repo's skills
 The formatter, lock-sync and docs come from `org-pkgs.flakeModules.dev`,
 so this repo has no dev partition and no dev-only inputs: everything
 they need is already in the org-pkgs lock. The repo follows the org standard (the
-`org-standards` skill).
+`org` skill).
 
 ## Develop
 
@@ -72,7 +72,7 @@ verify the installed set after changing a selection.
 Every source lives here as an input; consumers never add `skills-*`
 inputs of their own. Each home-manager user gets the `base` preset (the
 `core` group: baton-pass, clan-core, devenv, flakeparts, import-tree,
-nix-style, org-docs, org-repos, org-standards, remote-builder,
+nix-style, org, org-docs, remote-builder,
 skills-repo) and picks extras in their profile (the agents
 module lives in external-systems/modules). List own groups before
 external sources so own skills keep winning name collisions:
@@ -184,9 +184,10 @@ Workflow / behavior skills:
   where the session stopped, or resume from an existing handoff.
   Language- and repo-agnostic.
 
-- `org-repos` — map of the external-systems org: what home, pkgs,
-  modules, skills, secrets, not-secrets and clanServices each own, which flake consumes which, the `~/external-systems/<repo>`
-  clone layout, and the order to bump inputs across repos.
+- `org` — the external-systems org: what each repo owns, which flake
+  consumes which, the `~/external-systems/<repo>` clones, the repo
+  standard (org-pkgs, flakeModules.dev, devenv, CI, ruleset), PRs and
+  merge order across repos.
 
 - `skills-repo` — how this repo, external-systems/modules and
   external-systems/home ship skills: writing an own skill, importing an
@@ -198,9 +199,6 @@ their description):
 - `nix-style` — how Nix code is written: nesting, quoting, inherit,
   module conventions, treefmt linters and the tool loop (user
   preferences).
-- `org-standards` — how every org repo is structured and changed: the
-  org-pkgs input and flakeModules.dev, devenv, nixd, CI, the branch
-  ruleset, PRs and merge order across repos.
 - `flakeparts` — flake-parts module system mechanics, inputs, the
   lint gate, integrations.
 - `import-tree` — flake-parts auto-import via import-tree: mechanics,

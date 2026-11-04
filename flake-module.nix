@@ -20,7 +20,7 @@
   # This repo's skills/, grouped. Every skill belongs to exactly one
   # group (checks.own-skills-grouped); core is the shared base.
   ownGroups = {
-    core = ["baton-pass" "clan-core" "devenv" "flakeparts" "import-tree" "nix-style" "org-docs" "org-repos" "org-standards" "remote-builder" "skills-repo"];
+    core = ["baton-pass" "clan-core" "devenv" "flakeparts" "import-tree" "nix-style" "org" "org-docs" "remote-builder" "skills-repo"];
     fleet = ["clanservices" "declarative-runtime" "determinate" "disko" "home-manager" "lib" "vm-tests"];
     kubernetes = ["envoy-gateway" "kubenix" "openebs" "rancher-kubernetes"];
     networking = ["cilium" "frr" "ifstate"];

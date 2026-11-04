@@ -102,7 +102,7 @@ purely organizational (`flake-parts/packages/foo.nix` defines
 ## The lint gate
 
 The org gate is `checks.treefmt` from `inputs.org-pkgs.flakeModules.treefmt`,
-imported through `flakeModules.dev` at the root (the `org-standards`
+imported through `flakeModules.dev` at the root (the `org`
 skill). The hand-rolled form below is legacy, kept for repos
 not yet converged — do not add it to new repos.
 
