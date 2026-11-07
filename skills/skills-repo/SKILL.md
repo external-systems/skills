@@ -116,11 +116,12 @@ external-systems/home        per-user profiles set preset/extraSources
 ## Procedure C: give a home-manager user skills
 
 Do this in external-systems/home, in the user's profile, after the skills
-PR merges and the skills input is updated. The option names below follow
-external-systems/modules' `homeModules.agents`, which was still being
-split out when this skill was written. Check them against
-`flake-parts/homeModules/agents.nix` in modules before you edit, and fix
-this skill in the same PR if they changed.
+PR merges and the skills input is updated. The option names below are
+external-systems/modules' `homeModules.agents`
+(`flake-parts/homeModules/agents/agents.nix`): `skills.enable` and the
+agent toggles (`pi.enable`, `kimi.enable`, `claude.enable`,
+`opencode.enable`). Check them there before you edit, and fix this skill
+in the same PR if they changed.
 
 ```nix
 homeSpec.agents.skills = {

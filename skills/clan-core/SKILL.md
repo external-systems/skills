@@ -198,8 +198,8 @@ and registers its services from `clanServices/*/flake-module.nix` files
   `modules = [ (config.outputs.moduleForMachine.<name> or { }) ]` plus
   `specialArgs = { inherit clan-core; } // config.specialArgs`. If
   specialArgs are not threaded through, machine evals die with
-  `attribute '<arg>' missing` (the home repo passes its `customLib` there;
-  see the circularity exception in the `lib`/`nix-style` skills).
+  `attribute '<arg>' missing` (see the circularity exception in the
+  `nix-style` skill).
 
 ## The inventory
 
@@ -1194,7 +1194,7 @@ README prose in clan-* repos):
   internal/hidden on main — custom interfaces are experimental surface.
 - **Machine-eval arg circularity** — machine modules get args via
   `clan.specialArgs`, but a module's *config value* cannot use them (see
-  the `relativeToRoot` exception in the `nix-style`/`lib` skills).
+  the `relativeToRoot` exception in the `nix-style` skill).
 - **`deployment.requireExplicitUpdate`** — the home repo sets it
   (`flake-parts/nixosModules/clan.nix`) so pull-deployed machines are
   excluded from bare `clan machines update` (no args); targeted updates

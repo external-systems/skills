@@ -224,8 +224,6 @@ their description):
   pattern, devcontainer, containers/OCI/K8s.
 - `vm-tests` — hermetic NixOS VM tests: structure, sm/md/lg tiers,
   running, agent loop.
-- `lib` — this repo's customLib + the AGENTS flake lib (`mkSkills`
-  skill composition).
 - `disko` — declarative disk partitioning: devices tree, LUKS + clan
   vars keys, redundancy recipes.
 - `cilium` — Cilium 1.20.x: BGP control plane CRDs, LB IPAM, network
