@@ -18,7 +18,7 @@ literals or tokens in any file. To add or wire a skill, load the
 - `skills/<name>/SKILL.md`: this repo's skills, with optional `references/` and `runtime.nix`.
 
 ## Consumers
-- external-systems/modules (interface still settling; check its `flake-parts/homeModules/agents.nix`): `homeModules.agents` calls `mkSkillsTree` and `mkSkillsRuntime` with `homeSpec.agents.skills.{preset,extraSources}` and links the tree into pi (`~/.agents/skills`), kimi-code (`~/.kimi-code/skills`), claude-code (`~/.claude/skills`) and opencode.
+- external-systems/modules (`flake-parts/homeModules/agents/agents.nix`): `homeModules.agents` calls `mkSkillsTree` and `mkSkillsRuntime` with `homeSpec.agents.skills.{preset,extraSources}` and links the tree into pi (`~/.agents/skills`), kimi-code (`~/.kimi-code/skills`), claude-code (`~/.claude/skills`) and opencode.
 - external-systems/home: per-user profiles set `preset` and `extraSources`. The code-agent image uses `preset = "sandbox"`.
 - Changes reach machines only after `nix flake update skills` in the consumer and a human-run deploy.
 

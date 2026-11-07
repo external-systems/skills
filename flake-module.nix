@@ -21,7 +21,7 @@
   # group (checks.own-skills-grouped); core is the shared base.
   ownGroups = {
     core = ["baton-pass" "clan-core" "devenv" "external-systems" "flakeparts" "import-tree" "nix-style" "org-docs" "remote-builder" "skills-repo"];
-    fleet = ["clanservices" "declarative-runtime" "determinate" "disko" "home-manager" "lib" "vm-tests"];
+    fleet = ["clanservices" "declarative-runtime" "determinate" "disko" "home-manager" "vm-tests"];
     kubernetes = ["envoy-gateway" "kubenix" "openebs" "rancher-kubernetes"];
     networking = ["cilium" "frr" "ifstate"];
     infra = ["terranix"];

@@ -185,10 +185,6 @@ modules via `home-manager.extraSpecialArgs` — set both once in the default
 module, not per clan service, or consumers outside clan's module set
 (packages, VM tests) lose it.
 
-Home repo example: `customLib.custom.relativeToRoot`
-(`relativeToRoot "skills"`), exposed as `customLib` via `_module.args` and
-`home-manager.extraSpecialArgs`, both set in `nixosModules/default`.
-
 One hard exception: a NixOS module whose **config value** needs a
 repo-root path cannot take the helper as a module arg — args are
 resolved lazily through `config._module.args`, which is circular while
