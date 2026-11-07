@@ -378,19 +378,16 @@ Key patterns from the tests:
 
 ### This repo's VM-test conventions
 
-From [`skills/vm-tests/SKILL.md`](../../vm-tests/SKILL.md) and
-[`flake-parts/tests.nix`](../../flake-parts/tests.nix):
+From the [`vm-tests`](../../vm-tests/SKILL.md) skill (org-pkgs
+`flakeModules.vmTests`):
 
-* Test files live in `vm-tests/*.nix`.
-* Each file is a `nixosLib.runTest` module taking `{ self, inputs, pkgs, lib,
-  size, sizeCfg }`.
-* `flake-parts/tests.nix` auto-discovers files and exposes three size variants
-  as `legacyPackages.vmTests.<name>-{sm,md,lg}`:
-  * sm: 2 cores / 4096 MiB / 30 GiB disk, global timeout 1200 s
-  * md: 2× sm, global timeout 2400 s
-  * lg: 3× sm, global timeout 5400 s
-* Runner: `nix run .#vm-test -- <name>-sm`.
-* CI resource caps: `virtualisation.memorySize` ≤ 16384 MiB, `virtualisation.cores` ≤ 8.
+* Test files live in `vm-tests/*.nix`; each is a `nixosLib.runTest` module
+  (args `self`, `inputs`), exposed as `legacyPackages.<system>.vmTests.<name>`.
+* No size variants: each node declares `virtualisation.memorySize`/`cores`.
+  Caps (eval-checked): ≤ 16384 MiB and ≤ 8 cores per VM, ≤ 24576 MiB per test.
+  A multi-node Kubernetes test must fit that total.
+* Runner: `vm-test <name>`, or `vm-test <name> --remote` on the remote
+  builder. Never in CI.
 * Tests must be hermetic: no network inside the VM; pre-bake all images and
   charts in the Nix closure.
 

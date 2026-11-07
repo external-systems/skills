@@ -1076,8 +1076,8 @@ testing the home repo's own modules through its VM-test harness. The test
 file imports the repo's
 `nixosModules.default` (not the clan machinery) and flips the `hostSpec.*`
 options the service's `perInstance`/`perMachine` modules would set — see
-the `vm-tests` skill for the full hermeticity rule, size variants, and the
-agent loop. The clan-specific additions:
+the `vm-tests` skill for the full hermeticity rule, the `vm-test` runner
+and the agent loop. The clan-specific additions:
 
 - Import `inputs.clan-core.nixosModules.clanCore` and set minimal
   `clan.core.settings = {directory = self; machine.name = "<test>";}`
@@ -1089,9 +1089,10 @@ agent loop. The clan-specific additions:
 - Fake secrets as `/etc` plain files with an option override pointing at
   them (`patFile = "/etc/vm-github-pat"`-style) instead of real clan vars.
 
-Example: `vm-tests/opencode.nix` in the home repo wires
-`clan.core.settings` + fake PAT/key files and asserts MCP server configs
-and generated files end-to-end inside the VM.
+Prefer a module switch over faking clan vars: modules'
+`hostSpec.services.openshell.gateway` takes `provisionSecrets = false`
+plus explicit secret-file options, which a test points at fakes built
+with `runCommand`.
 
 Upstream's own patterns (in a clan-core checkout):
 

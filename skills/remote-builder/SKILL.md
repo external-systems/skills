@@ -88,24 +88,26 @@ combination can fail instead of dispatching the rebuild.
 
 ## NixOS VM tests and large builds
 
-Use the repository's normal VM-test runner or build its test derivation.
+Use the repository's `vm-test` runner (org-pkgs `flakeModules.vmTests`;
+the `vm-tests` skill) or build its test derivation.
 The remote builder's `kvm` and `nixos-test` features satisfy the usual
 NixOS VM-test requirements, and `big-parallel` suits large derivations.
 Nix routes derivations by system and required features; a feature the
 builder does not advertise cannot be silently ignored.
 
 ```sh
-nix run .#vm-test -- <test>-sm
-# Or, when the test is exposed as a flake package:
-nix build .#<test-attr> -L
+vm-test <test> --remote          # only on the remote builders (--max-jobs 0)
+vm-test --all --remote           # every test of the repo, --keep-going
+# Or build the derivation directly:
+nix build --max-jobs 0 -L .#legacyPackages.x86_64-linux.vmTests.<test>
 ```
 
 A runner may perform its own nested `nix build`; flags given to `nix run`
 do not automatically become flags for that nested build. Use the runner's
-documented builder option when forcing placement, and check `-L` output
+`--remote` flag (or `-- <nix build args>`) when forcing placement, and check `-L` output
 when proof matters. Driver or interactive mode runs the VMs on the invoking
-machine; use the sandboxed build for remote execution. Keep VM tests out of
-`checks` in org repos that follow the `vm-tests` convention.
+machine; use the sandboxed build for remote execution. VM tests stay out of
+`checks`, and GitHub Actions never runs them or uses this builder.
 
 ## Debug from the client
 
