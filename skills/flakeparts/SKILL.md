@@ -63,7 +63,9 @@ Conventions worth copying (from the home repo):
 - Expensive, KVM-dependent, or VM-booting outputs must NOT go in `checks`
   (`nix flake check` evaluates and often builds `checks`). Expose them
   under `legacyPackages.<system>.vmTests` — `nix flake check` does not
-  walk it. Writing and running them: the `vm-tests` skill.
+  walk it. In org repos org-pkgs `flakeModules.vmTests` (in
+  `flakeModules.default`) does this from `vm-tests/*.nix`; writing and
+  running them: the `vm-tests` skill.
 - Do not add a `nixConfig` block requiring extra
   `trusted-public-keys`/`extra-substituters` trust from consumers. In CI,
   caching is configured by the runner-side actions, not by the flake.

@@ -135,8 +135,8 @@ recreating the sandbox; filesystem/image changes require recreation.
   overridden; `--option`/`NIX_CONFIG` count). Works in-sandbox:
   `nix build --option substitute true .#checks.x86_64-linux.lint -L`.
 - Do NOT run the NixOS VM tests (`nix run .#vm-test`) in-sandbox:
-  they need /dev/kvm. VM tests are CI's job — the fleet CI is not wired
-  up yet, so flag the gap rather than running them. Full `nix flake
+  they need /dev/kvm, and CI never runs them either. Hand the owner the
+  command (`vm-test <name> --remote`, run from a fleet machine). Full `nix flake
   check` is allowed (checks only — VM tests are legacyPackages and
   never part of it) but evaluates every output; prefer the targeted
   lint gate when iterating.

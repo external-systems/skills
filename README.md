@@ -222,8 +222,8 @@ their description):
   backends, lifecycle maintenance, and debugging.
 - `devenv` — devenv 2.x dev environments: CLI reference, borg hybrid
   pattern, devcontainer, containers/OCI/K8s.
-- `vm-tests` — hermetic NixOS VM tests: structure, sm/md/lg tiers,
-  running, agent loop.
+- `vm-tests` — hermetic NixOS VM tests: org-pkgs `flakeModules.vmTests`,
+  the `vm-test` runner, eval-only checks, fake secrets, agent loop.
 - `disko` — declarative disk partitioning: devices tree, LUKS + clan
   vars keys, redundancy recipes.
 - `cilium` — Cilium 1.20.x: BGP control plane CRDs, LB IPAM, network

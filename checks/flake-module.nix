@@ -67,6 +67,21 @@
     checks = {
       # Formatting and lint: checks.treefmt (pkgs flakeModules.treefmt).
 
+      # The vm-tests skill documents every flag of org-pkgs' vm-test
+      # runner (this flake's own apps.vm-test, from flakeModules.default),
+      # so a runner change without a skill update fails here.
+      vm-tests-skill-flags = pkgs.runCommand "vm-tests-skill-flags" {} ''
+        missing=0
+        for flag in $(${self'.apps.vm-test.program} --help | grep -oE -- '--[a-z][a-z-]+' | sort -u); do
+          if ! grep -qF -- "$flag" ${self}/skills/vm-tests/SKILL.md; then
+            echo "skills/vm-tests/SKILL.md does not document vm-test $flag" >&2
+            missing=1
+          fi
+        done
+        [ "$missing" = 0 ]
+        touch $out
+      '';
+
       # Skill frontmatter gate: pi and kimi-code parse SKILL.md frontmatter
       # with JS YAML libraries that reject ': ' (colon+space) inside an
       # unquoted plain scalar and then SILENTLY skip the skill (pi reports

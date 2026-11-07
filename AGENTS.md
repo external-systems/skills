@@ -26,7 +26,7 @@ literals or tokens in any file. To add or wire a skill, load the
 - `git add` new files before any `nix` command. Nix evaluates the git tree, so untracked files do not exist for it.
 - The shell is devenv. If `DEVENV_ROOT` is unset, run commands with `devenv shell -- <cmd>`.
 - For any change, run `fmt` (treefmt: alejandra, deadnix, statix, nixf-diagnose, shellcheck, sizelint). `check-skills` validates frontmatter without Nix.
-- Gate: `check` (`nix flake check`). It runs `treefmt`, `lock-sync`, `documentation`, `slides`, `skill-frontmatter`, `own-skills-grouped`, `skills-runtime-coverage`, the `base`/`full`/`sandbox` trees, `skills-runtime` and `package-skills`. Markdown-only skill edits still need `skill-frontmatter` and `own-skills-grouped`, so run the full check anyway: it is cheap apart from the first `skills-runtime` build.
+- Gate: `check` (`nix flake check`). It runs `treefmt`, `lock-sync`, `documentation`, `slides`, `skill-frontmatter`, `own-skills-grouped`, `skills-runtime-coverage`, the `base`/`full`/`sandbox` trees, `skills-runtime`, `package-skills` and `vm-tests-skill-flags` (the vm-tests skill documents every `vm-test --help` flag). Markdown-only skill edits still need `skill-frontmatter` and `own-skills-grouped`, so run the full check anyway: it is cheap apart from the first `skills-runtime` build.
 - Inspect a tree: `ls $(nix build --no-link --print-out-paths .#base)`.
 - Add a source: add the input, then `nix flake lock`. Bump one source with `nix flake update skills-<name>`. Never bump `pkgs` casually, because it moves nixpkgs for the whole org; when you do, run `sync-locks` in the same commit.
 - Docs: `nix build .#documentation`, then open `result/index.html` from disk; `devenv up` for live preview on :8981.
