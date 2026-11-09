@@ -121,12 +121,35 @@ in an input-closing overlay in `flake-parts/overlays.nix` (the plain
 `overlays/*.nix` files close over no inputs). Package against the
 consumer's nixpkgs: take `python313` from the callPackage scope.
 
-**New project.** `uv init --package --name NAME .` inside the devenv
-shell, where `UV_PYTHON` is the set's interpreter; outside it pass
-`--python`, or uv writes `requires-python` from whatever Python is on
-PATH. Its backend is `uv_build`, which builds and installs editable
-with no overrides; hatchling needs `editables` added for the editable
-venv (recipe).
+**Start a Python repo** (or add Python to an org repo):
+
+1. `nix flake init -t github:external-systems/pkgs` (new repo only),
+   then add the three `follows` lines to `flake.nix` and `devenv.yaml`;
+   `nix flake lock`, `sync-locks`.
+2. Create the uv project. The devenv shell cannot evaluate before
+   `uv.lock` exists, so take uv and the interpreter from the org
+   nixpkgs:
+
+   ```sh
+   nix shell --inputs-from . nixpkgs#uv nixpkgs#python313 -c sh -c '
+     export UV_NO_SYNC=1 UV_PYTHON_DOWNLOADS=never
+     uv init --package --name NAME --python "$(command -v python3.13)" .
+     uv add --dev pytest'
+   ```
+
+   Without `--python`, uv writes `requires-python` from whatever Python
+   is on PATH. The backend is `uv_build`: it builds and installs editable
+   with no overrides (hatchling needs `editables`, see the recipe). Later
+   `uv` commands run inside the devenv shell, which sets all of this.
+3. Copy `python-set.nix`, `overrides.nix`, `python.nix` and `devenv.nix`
+   from [references/org-recipes.md](references/org-recipes.md); rename
+   `hello-uv` to NAME and the python to match `requires-python`.
+4. `git add -A`, `fmt`, `check`.
+
+Done when `check` is green (pytest and `uv-lock` ran), `nix run .#NAME`
+works, and in `devenv shell`
+`python -c 'import NAME; print(NAME.__file__)'` prints a path in the
+repo, not in `/nix/store`.
 
 ## Tool loop
 

@@ -80,7 +80,7 @@ external sources so own skills keep winning name collisions:
 ```nix
 # netsa's profile
 homeSpec.agents.skills.extraSources = with inputs.skills.lib.selections;
-  fleet ++ kubernetes ++ networking ++ infra ++ developer ++ anthropic ++ fluxcd;
+  fleet ++ kubernetes ++ networking ++ infra ++ anthropic ++ fluxcd;
 ```
 
 The agents module builds both the tree and the runtime from the same
