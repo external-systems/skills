@@ -12,42 +12,29 @@ impure); a package in pkgs; workspaces with several members; shipping
 
 ## Inputs
 
-`flake.nix`, below the org inputs (`org-pkgs`, `nixpkgs`, `flake-parts`,
-`import-tree` from the template):
+external-systems/pkgs pins the three inputs (each following its
+nixpkgs). `flake.nix` follows them, below the template's org inputs,
+and locks nothing new:
 
 ```nix
-# Python: uv.lock -> Nix. All three follow the org nixpkgs.
-pyproject-nix = {
-  url = "github:pyproject-nix/pyproject.nix";
-  inputs.nixpkgs.follows = "nixpkgs";
-};
-uv2nix = {
-  url = "github:pyproject-nix/uv2nix";
-  inputs = {
-    pyproject-nix.follows = "pyproject-nix";
-    nixpkgs.follows = "nixpkgs";
-  };
-};
-pyproject-build-systems = {
-  url = "github:pyproject-nix/build-system-pkgs";
-  inputs = {
-    pyproject-nix.follows = "pyproject-nix";
-    uv2nix.follows = "uv2nix";
-    nixpkgs.follows = "nixpkgs";
-  };
+inputs = {
+  org-pkgs.url = "github:external-systems/pkgs";
+  nixpkgs.follows = "org-pkgs/nixpkgs";
+  flake-parts.follows = "org-pkgs/flake-parts";
+  import-tree.follows = "org-pkgs/import-tree";
+
+  # Python (uv2nix): the org pins from external-systems/pkgs.
+  pyproject-nix.follows = "org-pkgs/pyproject-nix";
+  uv2nix.follows = "org-pkgs/uv2nix";
+  pyproject-build-systems.follows = "org-pkgs/pyproject-build-systems";
 };
 ```
 
-When external-systems/pkgs carries these three inputs, follow its pins
-instead, like `nixpkgs`, and lock nothing new:
-
-```nix
-pyproject-nix.follows = "org-pkgs/pyproject-nix";
-uv2nix.follows = "org-pkgs/uv2nix";
-pyproject-build-systems.follows = "org-pkgs/pyproject-build-systems";
-```
-
-Then `nix flake lock` and `git add flake.lock`.
+Then `nix flake lock` and `git add flake.lock`. `org-pkgs` stays on pkgs
+`main`: to try an unmerged pkgs change, pass
+`--override-input org-pkgs github:external-systems/pkgs/SHA` on the
+command line, and never commit that lock. A newer uv2nix arrives as a
+pkgs PR; after it merges, `nix flake update org-pkgs` + `sync-locks`.
 
 ## Standalone repo
 
@@ -207,8 +194,7 @@ formal).
 
 ### Pure: the uv2nix editable venv (verified)
 
-`devenv.yaml`: the template's inputs plus the three, following
-`nixpkgs` (or `follows: org-pkgs/uv2nix` etc. when pkgs carries them):
+`devenv.yaml`: the template's inputs plus the three org pins:
 
 ```yaml
 inputs:
@@ -217,26 +203,11 @@ inputs:
   nixpkgs:
     follows: org-pkgs/nixpkgs
   pyproject-nix:
-    url: github:pyproject-nix/pyproject.nix
-    inputs:
-      nixpkgs:
-        follows: nixpkgs
+    follows: org-pkgs/pyproject-nix
   uv2nix:
-    url: github:pyproject-nix/uv2nix
-    inputs:
-      pyproject-nix:
-        follows: pyproject-nix
-      nixpkgs:
-        follows: nixpkgs
+    follows: org-pkgs/uv2nix
   pyproject-build-systems:
-    url: github:pyproject-nix/build-system-pkgs
-    inputs:
-      pyproject-nix:
-        follows: pyproject-nix
-      uv2nix:
-        follows: uv2nix
-      nixpkgs:
-        follows: nixpkgs
+    follows: org-pkgs/pyproject-build-systems
 imports:
   - org-pkgs/devenv
 ```
@@ -275,9 +246,9 @@ in {
   as root is refused at eval.
 - Leave `languages.python` off: it would add its own interpreter and
   venv in front of this one.
-- devenv.lock pins the three inputs separately from flake.lock;
-  `checks.lock-sync` compares only nixpkgs. Update both together, or
-  follow org-pkgs so `sync-locks` does it.
+- Both locks resolve the three inputs through `org-pkgs`, so
+  `sync-locks` (which re-pins devenv.yaml's `org-pkgs` to flake.lock's
+  rev) keeps uv2nix identical in the shell and the build.
 - Meson-python, Cython or other compiled editables: add
   `inputs.pyproject-nix.packages.${pkgs.stdenv.system}.build-editable`
   to `packages` and run `build-editable` in `enterShell` (rebuilds the
@@ -373,8 +344,8 @@ pythonApps = final: _prev: {
 ```
 
 Add it to `flake.overlays.default`'s list, export it, and list it in
-`flake-parts/packages.nix`. The three inputs go in pkgs' `flake.nix`
-with `follows` as above; overlays are lazy, so consumers that never read
+`flake-parts/packages.nix`. Inside pkgs the three are its own inputs
+(`inputs.uv2nix` etc.); overlays are lazy, so consumers that never read
 the package never fetch them.
 
 ## Workspaces with several members
