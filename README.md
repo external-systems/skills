@@ -73,7 +73,7 @@ Every source lives here as an input; consumers never add `skills-*`
 inputs of their own. Each home-manager user gets the `base` preset (the
 `core` group: baton-pass, clan-core, devenv, external-systems, flakeparts, import-tree,
 nix-style, org-docs, remote-builder,
-skills-repo) and picks extras in their profile (the agents
+skills-repo, uv2nix) and picks extras in their profile (the agents
 module lives in external-systems/modules). List own groups before
 external sources so own skills keep winning name collisions:
 
@@ -222,6 +222,10 @@ their description):
   backends, lifecycle maintenance, and debugging.
 - `devenv` — devenv 2.x dev environments: CLI reference, borg hybrid
   pattern, devcontainer, containers/OCI/K8s.
+- `uv2nix` — Python in flakes with uv2nix + pyproject.nix: the org
+  layout (inputs, flake-parts module, devenv editable venv, pkgs overlay
+  packages), overrides for native libs and sdist build systems, lock
+  maintenance, and a debugging table of real error messages.
 - `vm-tests` — hermetic NixOS VM tests: org-pkgs `flakeModules.vmTests`,
   the `vm-test` runner, eval-only checks, fake secrets, agent loop.
 - `disko` — declarative disk partitioning: devices tree, LUKS + clan
