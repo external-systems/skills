@@ -77,15 +77,25 @@ shell and no flake `devShells` (the `external-systems` skill). uv2nix
 fits it like this; full, tested files are in
 [references/org-recipes.md](references/org-recipes.md).
 
-**Inputs.** Three inputs, every one following the org nixpkgs:
-`pyproject-nix`, `uv2nix` (follows `pyproject-nix`), and
-`pyproject-build-systems` (follows both). Before adding them, check
-whether pkgs already carries them (`grep -n uv2nix
-~/external-systems/pkgs/flake.nix`): if it does, follow it
-(`uv2nix.follows = "org-pkgs/uv2nix"`, in `flake.nix` and
-`devenv.yaml`) so one pin serves the org and `sync-locks` keeps flake
-and devenv aligned. If not, declare them in the repo with
-`inputs.nixpkgs.follows = "nixpkgs"`.
+**Inputs come from org-pkgs.** external-systems/pkgs pins
+`pyproject-nix`, `uv2nix` and `pyproject-build-systems` (each following
+the org nixpkgs), just as it pins `nixpkgs`. A Python repo follows them
+in `flake.nix` and `devenv.yaml` and declares no URL of its own:
+
+```nix
+pyproject-nix.follows = "org-pkgs/pyproject-nix";
+uv2nix.follows = "org-pkgs/uv2nix";
+pyproject-build-systems.follows = "org-pkgs/pyproject-build-systems";
+```
+
+One pin then serves the org, and `nix flake update org-pkgs` +
+`sync-locks` moves flake.lock and devenv.lock together. Bumping uv2nix
+is a pkgs PR (`nix flake update pyproject-nix uv2nix
+pyproject-build-systems` there), merged before consumers update
+`org-pkgs`. Lock `org-pkgs` to pkgs `main` only; an unmerged pkgs
+branch or commit is for local testing
+(`--override-input org-pkgs github:external-systems/pkgs/SHA`), never
+committed.
 
 **Standalone Python repo** (the workspace is the repo):
 
@@ -111,12 +121,35 @@ in an input-closing overlay in `flake-parts/overlays.nix` (the plain
 `overlays/*.nix` files close over no inputs). Package against the
 consumer's nixpkgs: take `python313` from the callPackage scope.
 
-**New project.** `uv init --package --name NAME .` inside the devenv
-shell, where `UV_PYTHON` is the set's interpreter; outside it pass
-`--python`, or uv writes `requires-python` from whatever Python is on
-PATH. Its backend is `uv_build`, which builds and installs editable
-with no overrides; hatchling needs `editables` added for the editable
-venv (recipe).
+**Start a Python repo** (or add Python to an org repo):
+
+1. `nix flake init -t github:external-systems/pkgs` (new repo only),
+   then add the three `follows` lines to `flake.nix` and `devenv.yaml`;
+   `nix flake lock`, `sync-locks`.
+2. Create the uv project. The devenv shell cannot evaluate before
+   `uv.lock` exists, so take uv and the interpreter from the org
+   nixpkgs:
+
+   ```sh
+   nix shell --inputs-from . nixpkgs#uv nixpkgs#python313 -c sh -c '
+     export UV_NO_SYNC=1 UV_PYTHON_DOWNLOADS=never
+     uv init --package --name NAME --python "$(command -v python3.13)" .
+     uv add --dev pytest'
+   ```
+
+   Without `--python`, uv writes `requires-python` from whatever Python
+   is on PATH. The backend is `uv_build`: it builds and installs editable
+   with no overrides (hatchling needs `editables`, see the recipe). Later
+   `uv` commands run inside the devenv shell, which sets all of this.
+3. Copy `python-set.nix`, `overrides.nix`, `python.nix` and `devenv.nix`
+   from [references/org-recipes.md](references/org-recipes.md); rename
+   `hello-uv` to NAME and the python to match `requires-python`.
+4. `git add -A`, `fmt`, `check`.
+
+Done when `check` is green (pytest and `uv-lock` ran), `nix run .#NAME`
+works, and in `devenv shell`
+`python -c 'import NAME; print(NAME.__file__)'` prints a path in the
+repo, not in `/nix/store`.
 
 ## Tool loop
 
@@ -136,10 +169,8 @@ nix build .#NAME -L && ./result/bin/NAME
 - `UV_NO_SYNC=1` keeps uv from creating `.venv`; uv only edits the lock.
   `uv run` and `uv sync` bypass the Nix venv: call the scripts directly
   (`pytest`, `NAME`).
-- Bump uv2nix itself: `nix flake update pyproject-nix uv2nix
-  pyproject-build-systems` (and `devenv update` with the same names when
-  devenv.yaml declares them). When they follow org-pkgs, `nix flake
-  update org-pkgs` then `sync-locks`.
+- Pick up a newer uv2nix after its pkgs PR merges: `nix flake update
+  org-pkgs`, then `sync-locks`, in one commit.
 - Read `nix log /nix/store/...drv` for a failed package build; `-L`
   streams it.
 

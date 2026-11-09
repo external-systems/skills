@@ -20,11 +20,12 @@
   # This repo's skills/, grouped. Every skill belongs to exactly one
   # group (checks.own-skills-grouped); core is the shared base.
   ownGroups = {
-    core = ["baton-pass" "clan-core" "devenv" "external-systems" "flakeparts" "import-tree" "nix-style" "org-docs" "remote-builder" "skills-repo" "uv2nix"];
-    fleet = ["clanservices" "declarative-runtime" "determinate" "disko" "home-manager" "vm-tests"];
+    core = ["baton-pass" "clan-core" "devenv" "external-systems" "nix-style" "org-docs" "remote-builder" "skills-repo" "vm-tests"];
     kubernetes = ["envoy-gateway" "kubenix" "openebs" "rancher-kubernetes"];
     networking = ["cilium" "frr" "ifstate"];
-    infra = ["terranix"];
+    # Building and running the org's flakes, machines and infrastructure;
+    # opt-in per user (full and sandbox carry it through own-all).
+    developer = ["clanservices" "declarative-runtime" "determinate" "disko" "flakeparts" "home-manager" "import-tree" "terranix" "uv2nix"];
     sandbox = ["sandbox-environment"];
   };
   own = selectSkills: [

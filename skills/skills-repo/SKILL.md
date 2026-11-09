@@ -32,8 +32,9 @@ external-systems/home        per-user profiles set preset/extraSources
 ```
 
 - **Own skills** live in `skills/<name>/`. Each one belongs to exactly one
-  `ownGroups` group in `flake-module.nix`: `core` (everyone), `fleet`,
-  `kubernetes`, `networking`, `infra` or `sandbox`.
+  `ownGroups` group in `flake-module.nix`: `core` (everyone),
+  `developer` (building and running the org's flakes, machines and
+  infrastructure), `kubernetes`, `networking` or `sandbox`.
 - **External skills** come from `skills-<name>` inputs (`flake = false`),
   exposed as `lib.sources.<name>` and as ready-made `lib.selections.<name>`
   lists.
@@ -127,7 +128,7 @@ in the same PR if they changed.
 homeSpec.agents.skills = {
   # preset = "full";  # default "base" = the core group
   extraSources = with inputs.skills.lib.selections;
-    fleet ++ kubernetes ++ networking ++ cloudflare;
+    developer ++ kubernetes ++ networking ++ cloudflare;
   # runtime.office = false;  # skips LibreOffice (about 2.5 GiB)
 };
 ```

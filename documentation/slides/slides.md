@@ -8,7 +8,7 @@ Note: Press `S` for the speaker view, `F` for fullscreen.
 
 ## What it ships
 
-- Own skills, grouped (`core`, `fleet`, `kubernetes`, ...)
+- Own skills, grouped (`core`, `developer`, `kubernetes`, ...)
 - External sources pinned as `flake = false` inputs
 - Presets: `base`, `full`, `sandbox`
 
