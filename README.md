@@ -53,7 +53,7 @@ devenv up        # live docs :8981 and slides :8982
 | `packages.<system>.skills-runtime` | Tools and modules the `full` set's scripts call |
 | `lib.customSkills` | Path to this repo's `skills/` |
 | `lib.sources.<name>` | Raw external skill sources (`anthropic`, `cloudflare`, `payloadcms`, `supabase`, `fluxcd`, `terraform`, `google`, `mattpocock`, `openshell`) |
-| `lib.ownGroups` | This repo's skills by group: `core`, `fleet`, `kubernetes`, `networking`, `infra`, `sandbox` |
+| `lib.ownGroups` | This repo's skills by group: `core`, `fleet`, `kubernetes`, `networking`, `infra`, `developer`, `sandbox` |
 | `lib.selections.<name>` | Ready-made `externalSkills` lists: one per own group, `own-all`, and one per source (`anthropic`, `anthropic-all`, `cloudflare`, `payloadcms`, `supabase`, `fluxcd`, `terraform`, `google`, `mattpocock`, `openshell`) |
 | `lib.externalSkills.{base,full,sandbox}` | Presets built from the selections |
 | `lib.mkSkills` | `{pkgs, customSkills ? null, externalSkills ? []}` → linkFarm; drop-in for the AGENTS flake's `lib.mkSkills` |
@@ -73,14 +73,14 @@ Every source lives here as an input; consumers never add `skills-*`
 inputs of their own. Each home-manager user gets the `base` preset (the
 `core` group: baton-pass, clan-core, devenv, external-systems, flakeparts, import-tree,
 nix-style, org-docs, remote-builder,
-skills-repo, uv2nix) and picks extras in their profile (the agents
+skills-repo) and picks extras in their profile (the agents
 module lives in external-systems/modules). List own groups before
 external sources so own skills keep winning name collisions:
 
 ```nix
 # netsa's profile
 homeSpec.agents.skills.extraSources = with inputs.skills.lib.selections;
-  fleet ++ kubernetes ++ networking ++ infra ++ anthropic ++ fluxcd;
+  fleet ++ kubernetes ++ networking ++ infra ++ developer ++ anthropic ++ fluxcd;
 ```
 
 The agents module builds both the tree and the runtime from the same

@@ -33,7 +33,8 @@ external-systems/home        per-user profiles set preset/extraSources
 
 - **Own skills** live in `skills/<name>/`. Each one belongs to exactly one
   `ownGroups` group in `flake-module.nix`: `core` (everyone), `fleet`,
-  `kubernetes`, `networking`, `infra` or `sandbox`.
+  `kubernetes`, `networking`, `infra`, `developer` (building software:
+  uv2nix) or `sandbox`.
 - **External skills** come from `skills-<name>` inputs (`flake = false`),
   exposed as `lib.sources.<name>` and as ready-made `lib.selections.<name>`
   lists.
