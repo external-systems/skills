@@ -71,9 +71,8 @@ verify the installed set after changing a selection.
 
 Every source lives here as an input; consumers never add `skills-*`
 inputs of their own. Each home-manager user gets the `base` preset (the
-`core` group: baton-pass, clan-core, devenv, external-systems, flakeparts, import-tree,
-nix-style, org-docs, remote-builder,
-skills-repo) and picks extras in their profile (the agents
+`core` group: baton-pass, clan-core, devenv, external-systems,
+org-docs) and picks extras in their profile (the agents
 module lives in external-systems/modules). List own groups before
 external sources so own skills keep winning name collisions:
 
