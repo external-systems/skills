@@ -176,7 +176,7 @@ the new `ca.crt`.
 | request times out | `limits.timeCpu` / `timeReal` |
 | reset takes minutes | `odoo-reset --list` shows the copy `stale` or `none`; the next reset rebuilds it |
 | no mail in Mailpit | `systemctl status mailpit-odoo`; in Odoo, Settings > Technical: Emails (state and failure reason), Outgoing Mail Servers (only `Mailpit` active), the queue cron in Scheduled Actions |
-| certificate warning on the machine | Firefox reads `/etc/firefox/policies/policies.json`; Chromium reads `/etc/chromium/policies/managed/odoo-ca.json` (`CACertificates`, check `chrome://policy`; Chrome: `/etc/opt/chrome/...`), not the system bundle; restart the browser after a new CA |
+| certificate warning on the machine | Firefox reads `/etc/firefox/policies/policies.json`; Chromium reads `/etc/chromium/policies/managed/odoo-ca.json` (`CACertificates`, check `chrome://policy`; Chrome: `/etc/opt/chrome/...`), and a nixpkgs Chromium also trusts `security.pki` through NSS/p11-kit (`trust list`); restart the browser after a new CA |
 | certificate warning on a LAN client | the client's imported CA predates a regenerated one |
 | LAN name unreachable | client hosts file has an old IP (`http://<IP>/hosts.txt` again); 403 means the client is outside `lan.allowedClients` |
 | nginx kept an old certificate | `systemctl reload nginx` must succeed: the TLS key is a `root:nginx 0440` clan var, never a `LoadCredential` |
