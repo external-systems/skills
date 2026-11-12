@@ -25,7 +25,7 @@
     networking = ["cilium" "frr" "ifstate"];
     # Building and running the org's flakes, machines and infrastructure;
     # opt-in per user (full and sandbox carry it through own-all).
-    developer = ["clanservices" "declarative-runtime" "determinate" "disko" "flakeparts" "home-manager" "import-tree" "terranix" "uv2nix"];
+    developer = ["clanservices" "declarative-runtime" "determinate" "disko" "flakeparts" "home-manager" "import-tree" "odoo" "terranix" "uv2nix"];
     sandbox = ["sandbox-environment"];
   };
   own = selectSkills: [

@@ -1,6 +1,6 @@
 ---
 name: vm-tests
-description: "Hermetic NixOS VM tests in external-systems org repos: org-pkgs flakeModules.vmTests (vm-tests/*.nix auto-discovered into legacyPackages.SYSTEM.vmTests, never checks), the vm-test runner (--list, NAME, --all, --remote on euc-hel-0, --driver/--keep-state/--interactive), vmTests.* options, eval-only checks and resource caps, hermetic fake secrets for clan-vars modules, clan tests vs plain tests, debugging, and the agent loop. Load when creating, running, or debugging a VM test."
+description: "Hermetic NixOS VM tests in external-systems org repos: org-pkgs flakeModules.vmTests (vm-tests/*.nix auto-discovered into legacyPackages.SYSTEM.vmTests, never checks), the vm-test runner (--list, NAME, --all/--serial, --check, --remote on euc-hel-0, --quiet and the run summary, --driver/--keep-state/--interactive), vmTests.* options, eval-only checks and resource caps, hermetic fake secrets for clan-vars modules, clan tests vs plain tests, pitfalls that cost a run, recipes (offline ACME, browser trust, LAN clients, config changes), debugging, and the agent loop. Load when creating, running, or debugging a VM test."
 ---
 
 # vm-tests
@@ -91,7 +91,13 @@ vmTests = {
   systems = ["x86_64-linux"];               # default
   tests.extra = ./tests/extra.nix;          # tests defined in code; name wins over a file
   globalTimeout = 30 * 60;                  # default per-test timeout (s)
-  limits = {memorySize = 16384; cores = 8; totalMemorySize = 24576;};  # defaults
+  limits = {                                # defaults
+    memorySize = 16384;                     # MiB, one VM
+    cores = 8;                              # one VM
+    totalMemorySize = 24576;                # MiB, all VMs of one test
+    totalCores = 16;                        # all VMs of one test
+  };
+  flakeChecks.enable = true;                # eval + resources checks in `checks`
   # dir = "${self}/vm-tests";               # default; null disables discovery
 };
 ```
@@ -108,15 +114,24 @@ are invisible.
 | `vm-test <name>` | sandboxed `nix build` of the test; **exit code = result** |
 | `vm-test <name> --remote` | the same with `--max-jobs 0`: only the daemon's remote builders (euc-hel-0) |
 | `vm-test --all --remote` | build every test (`vmTestsAll`) on the builder, `--keep-going` |
+| `vm-test --all --serial --remote` | one test at a time, each with its own log: tests too large to share the builder |
+| `vm-test --check [<name>]` | every test (or one) evaluates and fits the caps, one Nix process per test; boots nothing |
+| `vm-test <name> --quiet` | the full log goes to `build.log` only; only the summary is printed |
+| `vm-test --summary <name>` | print the last run's summary again, without building |
 | `vm-test <name> --rebuild` | run a test that already passed again (no-op on a first run) |
 | `vm-test <name> --driver` | run the driver on this machine, outside the sandbox |
 | `vm-test <name> --driver --keep-state` | reuse VM disks between runs (fast iteration) |
 | `vm-test <name> --driver --interactive` | Python REPL against live VMs |
 | `vm-test <name> -- <args>` | extra `nix build` args |
 
-Output lands in `.vm-tests/<name>/` in the repo root (gitignored):
-`build.log` and the `result` link for builds; `driver.log`, `junit.xml`
-and screenshots for driver runs. `--all` writes to `.vm-tests/_all/`.
+Every build and driver run ends with a **summary**: each subtest
+started, the `!!!` failures, and the first build errors, such as the
+test-script linter. It is printed and saved as `summary.txt`. Read the
+summary first; open the full log only for what it points at. Output
+lands in `.vm-tests/<name>/` in the repo root (gitignored): `build.log`,
+`summary.txt` and the `result` link for builds; `driver.log`,
+`junit.xml` and screenshots for driver runs. `--all` writes to
+`.vm-tests/_all/`, `--all --serial` to each test's own directory.
 
 - The flags of the nested `nix build` are the runner's. Flags given to
   `nix run` itself never reach it: use `--remote` or `-- <args>`.
@@ -132,12 +147,16 @@ and screenshots for driver runs. `--all` writes to `.vm-tests/_all/`.
 ## What nix flake check covers
 
 When a repo has tests, three eval-only checks run; they boot nothing and
-are safe on GitHub runners:
+are safe on GitHub runners. A repo whose tests are expensive to evaluate
+(many clan suites) sets `vmTests.flakeChecks.enable = false`: the first
+two then leave `checks` and stay available as
+`legacyPackages.<system>.vmTestChecks` for `vm-test --check`; the KVM
+guard always stays.
 
 | Check | Fails when |
 |---|---|
 | `vm-tests-eval` | a test does not evaluate (its `drvPath` fails) |
-| `vm-tests-resources` | a VM's `virtualisation.memorySize` > 16384 MiB or `cores` > 8, or a test's VMs sum > 24576 MiB (`vmTests.limits`; the values are read from the evaluated nodes) |
+| `vm-tests-resources` | a VM's `virtualisation.memorySize` > 16384 MiB or `cores` > 8, or a test's VMs sum > 24576 MiB or 16 cores (`vmTests.limits`; the values are read from the evaluated nodes) |
 | `vm-tests-no-kvm-checks` | any check needs `kvm`/`nixos-test` or is a NixOS test |
 
 The caps fit kamrui-h1 (32 GiB, 16 threads). Need more? Split the test
@@ -177,8 +196,10 @@ Tests have no real key material and must not need any.
 
 ## Debugging
 
-1. Read `.vm-tests/<name>/build.log` (or `driver.log`). Find the first
-   failing `must succeed:` line and the journal lines around it.
+1. Read the summary (`vm-test --summary <name>`): the failing subtest,
+   its `!!!` line, or the build error that stopped the test before boot.
+   Then open `.vm-tests/<name>/build.log` (or `driver.log`) at that
+   subtest for the `must succeed:` line and the journal around it.
 2. Iterate with `vm-test <name> --driver --keep-state`: VM disks persist
    between runs, much faster than a cold boot. Run once more without
    `--keep-state` before claiming success.
@@ -194,14 +215,52 @@ Tests have no real key material and must not need any.
 
 1. Mirror an existing test in the repo before inventing conventions.
 2. Write `vm-tests/<name>.nix`; `git add` it.
-3. `fmt`, then `check`. The eval-only checks catch evaluation errors and
-   resource overruns without booting anything.
-4. `vm-test <name>` (or `--remote`). On failure, fix the **config under
-   test** first; change the test only when the test is wrong.
+3. `fmt`, then `check`, and `vm-test --check <name>`. The eval-only
+   checks catch evaluation errors and resource overruns without booting
+   anything.
+4. `vm-test <name> --remote --quiet`, then read the summary. Several
+   tests run side by side as separate background runs. On failure, fix
+   the **config under test** first; change the test only when the test
+   is wrong.
 5. Claim a pass only on exit 0 of a sandboxed build (not a driver run).
    Report the exact command, local or remote, and the result.
 6. New services in modules should come with a VM test. A batch across
    repos: `vm-test --all --remote` in each.
+
+## Pitfalls that cost a run
+
+Each of these failed a 10-15 minute remote run in practice.
+
+- **The driver lints `testScript` with ruff before booting.** An unused
+  import fails the build (`F401`). Import a module in the test that uses
+  it, not in a shared helper string.
+- **Read whole streams in pipes:** `cmd | grep X >/dev/null`. `grep -q`
+  exits at the first match, the writer gets SIGPIPE (curl exit 23), and
+  under the driver's `pipefail` a `succeed` fails on long output while a
+  `fail` can pass by accident.
+- **`systemctl restart` of a `Type=simple` unit returns before it
+  listens** (nginx, most daemons): follow it with `wait_until_succeeds`
+  or `wait_for_open_port`, never a bare `succeed` on the service.
+- **Reload what the module configures.** A test that never runs
+  `systemctl reload <unit>` misses reload-only failures: nginx's reload
+  runs `nginx -t` as the nginx user, which cannot read a key passed by
+  `LoadCredential`, so deploys and ACME renewals silently kept old
+  certificates. Give nginx files it can read (group `nginx`, 0440) and
+  assert a reload.
+- **A wait that times out says nothing about why** (`curl -sf` is
+  silent). Wrap a slow wait in `try`/`except`, print `curl -v`, the
+  served certificate chain and the relevant journal, then `raise`.
+- **A NixOS module that reads home-manager users' options** needs test
+  users built like real ones (the repo's `homeModules.default` and its
+  shared modules); a user with one home module made a sibling NixOS
+  module recurse infinitely.
+- **Headless Firefox never exits on a certificate-error page**
+  (`--screenshot` waits forever): run such controls under a short
+  `timeout` with `machine.execute` and assert on the server's logs.
+
+Longer patterns (an offline ACME server, proving a browser trusts a
+certificate, a LAN client that edits its hosts file, testing a config
+change with a specialisation): [references/recipes.md](references/recipes.md).
 
 ## Patterns and anti-patterns
 

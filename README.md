@@ -226,7 +226,11 @@ their description):
   packages), overrides for native libs and sdist build systems, lock
   maintenance, and a debugging table of real error messages.
 - `vm-tests` — hermetic NixOS VM tests: org-pkgs `flakeModules.vmTests`,
-  the `vm-test` runner, eval-only checks, fake secrets, agent loop.
+  the `vm-test` runner (summary, `--quiet`, `--check`, `--serial`),
+  eval-only checks, fake secrets, pitfalls, recipes, agent loop.
+- `odoo` — the owner's Odoo test instances through
+  `hostSpec.services.odoo`: configuring, using (reset, snapshots,
+  Mailpit, LAN clients), changing the module and its VM tests, debugging.
 - `disko` — declarative disk partitioning: devices tree, LUKS + clan
   vars keys, redundancy recipes.
 - `cilium` — Cilium 1.20.x: BGP control plane CRDs, LB IPAM, network
