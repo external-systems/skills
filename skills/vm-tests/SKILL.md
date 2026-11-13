@@ -120,6 +120,7 @@ are invisible.
 | `vm-test <name> --remote` | the same with `--max-jobs 0`: only the daemon's remote builders (euc-hel-0) |
 | `vm-test --all --remote` | every test on the builder, side by side within `vmTests.parallel`, failures rerun alone (below) |
 | `vm-test --all --serial --remote` | the same, one test at a time |
+| `vm-test --all --remote --rebuild --resume` | continue an interrupted run: skip tests whose last run passed for the same test derivation |
 | `vm-test --check [<name>]` | every test (or one) evaluates and fits the caps, one Nix process per test; boots nothing |
 | `vm-test <name> --quiet` | the full log goes to `build.log` only; only the summary is printed |
 | `vm-test --summary <name>` | print the last run's summary again, without building |
@@ -155,6 +156,11 @@ test's own directory.
   sensitive under load; first log in `build-under-load.log`). It ends
   with one `PASS`/`PASS(!)`/`CACHED`/`FAIL` line per test and exits
   non-zero on any `FAIL`.
+- **`--resume`** reads each test's `result.txt`
+  (`passed|cached|failed <seconds> <test drv>`): a test whose last run
+  passed for the same derivation is skipped, so a run cut short by a
+  reboot or a lost connection continues instead of starting over. A
+  changed test is a new derivation and runs again.
 
 - The flags of the nested `nix build` are the runner's. Flags given to
   `nix run` itself never reach it: use `--remote` or `-- <args>`.
@@ -179,8 +185,12 @@ guard always stays.
 | Check | Fails when |
 |---|---|
 | `vm-tests-eval` | a test does not evaluate (its `drvPath` fails) |
-| `vm-tests-resources` | a VM's `virtualisation.memorySize` > 16384 MiB or `cores` > 8, or a test's VMs sum > 24576 MiB or 16 cores (`vmTests.limits`; the values are read from the evaluated nodes) |
+| `vm-tests-resources` | a VM's `virtualisation.memorySize` > 16384 MiB or `cores` > 8, or a test's VMs sum > 24576 MiB or 16 cores (`vmTests.limits`; the values are read from the evaluated nodes), or a test script pipes into `grep -q` |
 | `vm-tests-no-kvm-checks` | any check needs `kvm`/`nixos-test` or is a NixOS test |
+
+`vm-test --check` and the `--all` preparation run the same caps and
+lint per test. In pkgs, `checks.vm-test-runner` tests the runner itself
+against a fake `nix` (no VM); change the runner only with a case there.
 
 The caps fit kamrui-h1 (32 GiB, 16 threads). Need more? Split the test
 or reduce node count; raising `limits` needs the owner's yes.
@@ -271,7 +281,13 @@ Each of these failed a 10-15 minute remote run in practice.
 - **Read whole streams in pipes:** `cmd | grep X >/dev/null`. `grep -q`
   exits at the first match, the writer gets SIGPIPE (curl exit 23), and
   under the driver's `pipefail` a `succeed` fails on long output while a
-  `fail` can pass by accident.
+  `fail` can pass by accident. `vm-test --check` rejects `| grep -q`.
+- **Refactoring tests? Prove it faithful before booting.** Snapshot every
+  node's `system.build.toplevel.drvPath` and the rendered
+  `config.testScriptString` before and after, and diff once the intended
+  rewrites are normalized. clanServices ships this as
+  `nix run .#suite-snapshot` / `.#suite-compare` (its
+  `reference/testing.md`); copy that pattern elsewhere.
 - **`systemctl restart` of a `Type=simple` unit returns before it
   listens** (nginx, most daemons): follow it with `wait_until_succeeds`
   or `wait_for_open_port`, never a bare `succeed` on the service.

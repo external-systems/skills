@@ -154,7 +154,18 @@ than doing it unasked.
 - **Never push to `main`.** Every change is a branch and a PR in the
   repo that owns it. One concern per PR, one PR per repo.
 - **Before pushing:** `git add -A` (Nix only sees tracked files),
-  `fmt`, `check`, and build what you touched.
+  `fmt`, `check`, and build what you touched. `check` is
+  `nix run .#flake-check`: it fails on dangerous evaluation warnings
+  (`evalWarnings.deny`: ignored, removed or insecure config) and lists the
+  rest, which may wait.
+- **GitHub from the shell:** read repo settings with
+  `gh api repos/external-systems/<repo> --jq '<fields>'` (`gh repo view
+  --json` lacks settings such as `allow_auto_merge`). On the private
+  `secrets` repo the token cannot read a PR's `statusCheckRollup`; read
+  CI with `gh run list -b <branch> --json status,conclusion`.
+- **Private inputs outside devenv** (home evaluating `secrets`): Nix gets
+  a 404 without a token. The devenv shell sets it from `.env`; for one
+  command, `NIX_CONFIG="access-tokens = github.com=$(gh auth token)"`.
 - **Commits:** imperative subject naming the change, body says why. The
   PR is squash-merged and its title becomes the commit on `main`: make
   it a good one.
@@ -188,12 +199,3 @@ upstream merges:
   say so in the PR, and re-lock to `main` once it merges.
 
 Never commit a `path:` lock.
-
-## Migration state
-
-Every core repo is on the standard: pkgs, skills, modules, not-secrets,
-secrets, home and clanServices. Some standalone repos are not converged:
-check a repo's `flake.nix` before assuming the standard. pkgs no longer
-tolerates the old docs builder, so the PR that next bumps org-pkgs in an
-unconverged repo also converges it. Update this section in the PR that
-moves a repo; delete it when every repo is converged.
