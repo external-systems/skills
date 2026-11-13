@@ -820,7 +820,38 @@ in {
 }
 ```
 
-### Services with vars
+### VM tests in external-systems repos (`clanTests` → `vmTests`)
+
+Org repos never use `clan.nixosTests`: it puts VM tests in `checks`,
+and org CI has no KVM. external-systems/clanServices registers suites in
+a top-level `clanTests.<suite>` option; `flake-parts/clan-tests.nix`
+wraps each in clan-core's `clanTest` and hands it to org-pkgs
+`vmTests.tests`, so suites land in `legacyPackages.<system>.vmTests`
+and run with `vm-test` (the `vm-tests` skill):
+
+```nix
+# services/<name>/flake-module.nix (top level, not perSystem)
+clanTests.<name> = {
+  imports = [./tests/vm/default.nix];
+  inherit clan;              # this flake's clan.modules + exportInterfaces
+};
+
+# flake-parts/clan-tests.nix
+vmTests.tests = lib.mapAttrs (_: test: {
+  imports = [inputs.clan-core.modules.nixosTest.clanTest test];
+  defaults._module.args.clan-core = inputs.clan-core;
+}) config.clanTests;
+```
+
+Test vars are generated during evaluation (clan-core's vars executor,
+an IFD), so no update-vars step. k3s and RKE2 suites that test the same
+contract share one body in `lib/kube-cluster/tests/vm/<suite>.nix`
+(`distro` argument, explicit branches where the distributions differ)
+behind thin per-service wrappers. Phases are `with subtest(...)` blocks
+so `vm-test` summaries name them; each suite still ends with its
+`<SUITE>_OK` marker. Run them with `vm-test --all --remote --rebuild`.
+
+### Services with vars (upstream clan-core)
 
 VM tests need generated vars first (see `docs/src/guides/contributing/testing.md`):
 

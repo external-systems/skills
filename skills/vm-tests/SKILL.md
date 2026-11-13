@@ -1,6 +1,6 @@
 ---
 name: vm-tests
-description: "Hermetic NixOS VM tests in external-systems org repos: org-pkgs flakeModules.vmTests (vm-tests/*.nix auto-discovered into legacyPackages.SYSTEM.vmTests, never checks), the vm-test runner (--list, NAME, --all/--serial, --check, --remote on euc-hel-0, --quiet and the run summary, --driver/--keep-state/--interactive), vmTests.* options, eval-only checks and resource caps, hermetic fake secrets for clan-vars modules, clan tests vs plain tests, pitfalls that cost a run, recipes (offline ACME, browser trust, LAN clients, config changes), debugging, and the agent loop. Load when creating, running, or debugging a VM test."
+description: "Hermetic NixOS VM tests in external-systems org repos: org-pkgs flakeModules.vmTests (vm-tests/*.nix auto-discovered into legacyPackages.SYSTEM.vmTests, never checks), the vm-test runner (--list, NAME, --all/--serial, --check, --remote on euc-hel-0, parallel --all within a vCPU/memory budget with failures rerun alone, fresh --rebuild runs and CACHED results, --quiet and the run summary, --driver/--keep-state/--interactive), vmTests.* options, eval-only checks and resource caps, hermetic fake secrets for clan-vars modules, clan tests vs plain tests, pitfalls that cost a run, recipes (offline ACME, browser trust, LAN clients, config changes), debugging, and the agent loop. Load when creating, running, or debugging a VM test."
 ---
 
 # vm-tests
@@ -97,6 +97,11 @@ vmTests = {
     totalMemorySize = 24576;                # MiB, all VMs of one test
     totalCores = 16;                        # all VMs of one test
   };
+  parallel = {                              # `vm-test --all` budget
+    cores = 16;                             # default: limits.totalCores
+    memorySize = 24576;                     # default: limits.totalMemorySize
+    evalJobs = 4;                           # tests evaluated at once, locally
+  };
   flakeChecks.enable = true;                # eval + resources checks in `checks`
   # dir = "${self}/vm-tests";               # default; null disables discovery
 };
@@ -113,12 +118,12 @@ are invisible.
 | `vm-test --list` | list the tests |
 | `vm-test <name>` | sandboxed `nix build` of the test; **exit code = result** |
 | `vm-test <name> --remote` | the same with `--max-jobs 0`: only the daemon's remote builders (euc-hel-0) |
-| `vm-test --all --remote` | build every test (`vmTestsAll`) on the builder, `--keep-going` |
-| `vm-test --all --serial --remote` | one test at a time, each with its own log: tests too large to share the builder |
+| `vm-test --all --remote` | every test on the builder, side by side within `vmTests.parallel`, failures rerun alone (below) |
+| `vm-test --all --serial --remote` | the same, one test at a time |
 | `vm-test --check [<name>]` | every test (or one) evaluates and fits the caps, one Nix process per test; boots nothing |
 | `vm-test <name> --quiet` | the full log goes to `build.log` only; only the summary is printed |
 | `vm-test --summary <name>` | print the last run's summary again, without building |
-| `vm-test <name> --rebuild` | run a test that already passed again (no-op on a first run) |
+| `vm-test <name> --rebuild` | boot a test that already passed again; works with `--remote` and `--all` |
 | `vm-test <name> --driver` | run the driver on this machine, outside the sandbox |
 | `vm-test <name> --driver --keep-state` | reuse VM disks between runs (fast iteration) |
 | `vm-test <name> --driver --interactive` | Python REPL against live VMs |
@@ -129,9 +134,26 @@ started, the `!!!` failures, and the first build errors, such as the
 test-script linter. It is printed and saved as `summary.txt`. Read the
 summary first; open the full log only for what it points at. Output
 lands in `.vm-tests/<name>/` in the repo root (gitignored): `build.log`,
+`result.txt` (`passed|cached|failed <seconds>`),
 `summary.txt` and the `result` link for builds; `driver.log`,
-`junit.xml` and screenshots for driver runs. `--all` writes to
-`.vm-tests/_all/`, `--all --serial` to each test's own directory.
+`junit.xml` and screenshots for driver runs. `--all` writes to each
+test's own directory.
+
+- **CACHED is not a pass of this run.** A build that succeeds without
+  booting anything (the result was already in a store, often the
+  builder's) prints `CACHED` and, when the log is available, the earlier
+  run's summary. To prove a change, run with `--rebuild`: it builds
+  `vmTestsFresh.<name>` (the test with a per-run id, `--impure`), so it
+  boots again, also on the remote builder. Plain `nix build --rebuild`
+  never goes to a remote builder; do not use it with `--max-jobs 0`.
+- **`--all`** prepares `parallel.evalJobs` tests at a time (evaluate,
+  check caps, read sizes, build drivers), then boots tests largest first
+  while their VMs fit in `vmTests.parallel` (a test larger than the
+  budget runs alone). A test that fails with others running is rerun
+  alone: passing then is `PASS(!)`, a pass with a warning (timing-
+  sensitive under load; first log in `build-under-load.log`). It ends
+  with one `PASS`/`PASS(!)`/`CACHED`/`FAIL` line per test and exits
+  non-zero on any `FAIL`.
 
 - The flags of the nested `nix build` are the runner's. Flags given to
   `nix run` itself never reach it: use `--remote` or `-- <args>`.
@@ -189,10 +211,17 @@ Tests have no real key material and must not need any.
   `clan.core.*`, import `inputs.clan-core.nixosModules.clanCore` and set
   `clan.core.settings = {directory = self; machine.name = "test";}`, or
   use the repo's clan stub module if it has one.
-- **Clan tests** (a whole clan service with inventory and vars) use
-  clan-core's `clanLib.test`/`clan.nixosTests` machinery. That is the
-  `clanservices` skill, §17. clanServices has its own runner and does not
-  use flakeModules.vmTests yet. Do not convert it unasked.
+- **Clan tests** (a whole clan service with inventory and vars) wrap
+  clan-core's `clanTest` module (`inputs.clan-core.modules.nixosTest.clanTest`,
+  with `defaults._module.args.clan-core`) and register in
+  `vmTests.tests`, never `clan.nixosTests` (that puts them in `checks`).
+  clanServices does this: each service's `flake-module.nix` adds suites
+  to a top-level `clanTests.<suite>` option, and
+  `flake-parts/clan-tests.nix` hands them to `vmTests.tests` with
+  `dir = null`, raised `limits`, `parallel` and
+  `flakeChecks.enable = false`. Test vars are generated during
+  evaluation (clan-core IFD); there is no update-vars step. Authoring
+  details: the `clanservices` skill.
 
 ## Debugging
 
@@ -218,11 +247,15 @@ Tests have no real key material and must not need any.
 3. `fmt`, then `check`, and `vm-test --check <name>`. The eval-only
    checks catch evaluation errors and resource overruns without booting
    anything.
-4. `vm-test <name> --remote --quiet`, then read the summary. Several
-   tests run side by side as separate background runs. On failure, fix
+4. `vm-test <name> --remote --quiet` (add `--rebuild` when a CACHED
+   result would hide whether your change still passes), then read the
+   summary. For many tests use `vm-test --all --remote --rebuild`: it
+   runs them side by side within the budget; never start several
+   `vm-test` processes by hand on one builder. On failure, fix
    the **config under test** first; change the test only when the test
    is wrong.
-5. Claim a pass only on exit 0 of a sandboxed build (not a driver run).
+5. Claim a pass only on exit 0 of a sandboxed build that booted the VMs
+   (`passed`, not `CACHED`; not a driver run).
    Report the exact command, local or remote, and the result.
 6. New services in modules should come with a VM test. A batch across
    repos: `vm-test --all --remote` in each.
