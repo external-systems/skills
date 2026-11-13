@@ -147,7 +147,8 @@ test's own directory.
   boots again, also on the remote builder. Plain `nix build --rebuild`
   never goes to a remote builder; do not use it with `--max-jobs 0`.
 - **`--all`** prepares `parallel.evalJobs` tests at a time (evaluate,
-  check caps, read sizes, build drivers), then boots tests largest first
+  check caps, read sizes, build drivers; a failed preparation is retried
+  once alone), then boots tests largest first
   while their VMs fit in `vmTests.parallel` (a test larger than the
   budget runs alone). A test that fails with others running is rerun
   alone: passing then is `PASS(!)`, a pass with a warning (timing-
