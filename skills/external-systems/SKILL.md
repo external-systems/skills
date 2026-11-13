@@ -44,7 +44,7 @@ machines.
 | **not-secrets** | The values schema, `lib`, `flakeModules.{values,checks}`, public placeholder values (RFC 5737/3849/7042/2606 ranges only). | Any real value (`checks.placeholders-only`) |
 | **secrets** | Private. Only `values/`: real addresses, interfaces, MACs, deploy targets, storage box ids. Same outputs as not-secrets; `checks.shape-parity`. | Credentials (those are clan vars) |
 | **home** | The clan: `inventory.nix`, `machines/`, users and their home-manager profiles, home-only clan services, `sops/`, `vars/`. Deploys run from here. | Packages, overlays, reusable modules, skills, IP literals |
-| **clanServices** | Standalone clan services (`k3s`, `rke2`, `netif`, `routed-fabric`, `wireguard-mesh`); `SPEC.md` is its contract. Not consumed by home yet; the Kubernetes machines still live in andrewthomaslee/borg. | Machines, real values |
+| **clanServices** | Standalone clan services (`k3s`, `rke2`, `netif`, `routed-fabric`, `wireguard-mesh`); `SPEC.md` is its contract. home consumes `remote-builder`; the Kubernetes machines still live in andrewthomaslee/borg. | Machines, real values |
 
 Every other repo in the org is **standalone**: a project of its own
 that follows the same standard and consumes pkgs, and that nothing
@@ -60,8 +60,9 @@ How the links work:
 - **Skills reach machines through modules:** `homeModules.agents` calls
   `inputs.skills.lib.mkSkillsTree` with each user's
   `homeSpec.agents.skills.{preset,extraSources}`.
-- **clanServices** is added with `clanServices.inputs.clan-core.follows
-  = "clan-core"` and referenced as `module.input = "clanServices"`.
+- **clanServices** is added with `clanServices.inputs.org-pkgs.follows
+  = "org-pkgs"` and `clanServices.inputs.clan-core.follows = "clan-core"`,
+  and referenced as `module.input = "clanServices"`.
 
 ## Where a change goes
 
@@ -90,7 +91,7 @@ repos start from `nix flake init -t github:external-systems/pkgs`.
 - **One org input.** `org-pkgs.url = "github:external-systems/pkgs"`;
   `nixpkgs`, `flake-parts` and `import-tree` follow `org-pkgs/*`, and
   every other input follows those where it can. Never name it `pkgs`
-  (the nixpkgs package set; clanServices is the legacy exception). One
+  (the nixpkgs package set). One
   nixpkgs for the org: no second nixpkgs, no `pkgs.unstable`.
 - **Imports `inputs.org-pkgs.flakeModules.default`**: treefmt (formatter,
   `checks.treefmt`), docs and slides as checks, `checks.lock-sync`,
@@ -190,11 +191,9 @@ Never commit a `path:` lock.
 
 ## Migration state
 
-On the standard, or converging in an open PR: pkgs, skills, modules,
-not-secrets, secrets, home. Not yet: **clanServices** (input named
-`pkgs`, old docs builder); leave it alone unless asked. pkgs no longer
+Every core repo is on the standard: pkgs, skills, modules, not-secrets,
+secrets, home and clanServices. Some standalone repos are not converged:
+check a repo's `flake.nix` before assuming the standard. pkgs no longer
 tolerates the old docs builder, so the PR that next bumps org-pkgs in an
-unconverged repo also converges it. Some standalone repos are not
-converged either: check a repo's `flake.nix` before assuming the
-standard. Update this section in the PR that moves a repo; delete it
-when every repo is converged.
+unconverged repo also converges it. Update this section in the PR that
+moves a repo; delete it when every repo is converged.

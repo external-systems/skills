@@ -96,11 +96,18 @@ Nix routes derivations by system and required features; a feature the
 builder does not advertise cannot be silently ignored.
 
 ```sh
-vm-test <test> --remote          # only on the remote builders (--max-jobs 0)
-vm-test --all --remote           # every test of the repo, --keep-going
+vm-test <test> --remote            # only on the remote builders (--max-jobs 0)
+vm-test <test> --remote --rebuild  # boot it again although it passed before
+vm-test --all --remote --rebuild   # every test, side by side within vmTests.parallel
 # Or build the derivation directly:
 nix build --max-jobs 0 -L .#legacyPackages.x86_64-linux.vmTests.<test>
 ```
+
+A result that is already in the builder's store comes back without
+booting anything; `vm-test` reports that as CACHED, not as a pass of
+this run. `vm-test --rebuild` gets a fresh run by building a per-run
+copy of the test (`vmTestsFresh`), which the builder accepts; plain
+`nix build --rebuild` with `--max-jobs 0` fails (see above).
 
 A runner may perform its own nested `nix build`; flags given to `nix run`
 do not automatically become flags for that nested build. Use the runner's
