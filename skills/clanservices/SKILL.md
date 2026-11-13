@@ -851,6 +851,14 @@ behind thin per-service wrappers. Phases are `with subtest(...)` blocks
 so `vm-test` summaries name them; each suite still ends with its
 `<SUITE>_OK` marker. Run them with `vm-test --all --remote --rebuild`.
 
+- **`clan.directory = ./.` is in every node closure.** clanTest copies the
+  whole test directory (`merged-test-dir-<suite>` → `decrypt-age-secrets`
+  → activation), so editing any file in that directory changes every
+  node's derivation, even of other suites sharing the directory. To
+  compare node configs across a test edit, pin the baseline copy:
+  clanServices `nix run .#suite-snapshot -- AFTER --pin BASE`
+  (`VM_SUITE_DIR`).
+
 ### Services with vars (upstream clan-core)
 
 VM tests need generated vars first (see `docs/src/guides/contributing/testing.md`):
