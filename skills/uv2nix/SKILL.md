@@ -1,6 +1,6 @@
 ---
 name: uv2nix
-description: "uv2nix and pyproject.nix: build Python packages, apps and virtualenvs from a uv workspace (pyproject.toml + uv.lock) in a flake-parts repo, the org layout (inputs, flake-parts/python.nix, devenv editable venv, pkgs overlay packages), overrides for native libs and sdist build systems, maintaining the lock, and debugging failed builds. Load whenever Python meets Nix: packaging a Python app or CLI, a pyproject.toml or uv.lock in a flake, a Python dev shell, or uv2nix/pyproject.nix errors."
+description: "Python in the org: uv2nix and pyproject.nix builds of a uv workspace (pyproject.toml + uv.lock) through external-systems/pkgs flakeModules.python and the org-pkgs/devenv/python shell, the Astral toolchain (uv, ruff, ty), release-number versioning and --version, consuming org Python packages (flake inputs, uv git sources), VS Code/VSCodium and nixd setup, overrides for native libs and sdist build systems, and debugging failed builds. Load whenever Python meets Nix: a Python app, CLI or library, a pyproject.toml or uv.lock, a Python dev shell or editor setup, ruff or ty findings, or uv2nix/pyproject.nix errors."
 ---
 
 # uv2nix
@@ -14,17 +14,18 @@ code; clone it when this skill runs out:
 `git clone https://github.com/pyproject-nix/uv2nix` (`lib/workspace.nix`,
 `lib/build.nix`, `doc/src/`), same for `pyproject.nix` (`build/`).
 
-Facts below were verified on 2026-11-09 against uv2nix `c361746`,
-pyproject.nix `d43f0e7`, the org nixpkgs (uv 0.13.5, python313 3.13.16)
-and devenv 2.4 by building a flake-parts demo end to end.
+Facts below were verified on 2026-11-14 against uv2nix `c361746`,
+pyproject.nix `d43f0e7`, the org nixpkgs (uv 0.13.5, ruff 0.17.2,
+ty 0.0.91, python313 3.13.16), devenv 2.4 and Nix 2.34, by moving
+andrewthomaslee/moscripts onto `flakeModules.python` end to end.
 
 ## Pick the tool first
 
 | Need | Use |
 |---|---|
-| Ship a Python app, CLI, service or image from a flake | uv2nix (this skill) |
-| A dev shell whose venv matches the Nix build exactly | uv2nix editable venv in devenv |
-| A dev shell only, nothing shipped by Nix | devenv `languages.python.uv` (impure `uv sync`), no uv2nix |
+| An org Python app, CLI, library or service | a uv workspace + `flakeModules.python` (this skill) |
+| A dev shell whose venv matches the Nix build exactly | `org-pkgs/devenv/python` (editable uv2nix venv) |
+| A third-party Python app packaged in pkgs | a vendored uv project + `package.nix` (headroom) |
 | A few well-known libs for a script or docs build | `python3.withPackages` from nixpkgs |
 | A lib or tool already in nixpkgs, small fix needed | `overridePythonAttrs` on nixpkgs |
 
@@ -72,60 +73,85 @@ mkApplication {venv; package = pythonSet.NAME;}               -> app without ven
 
 ## The org layout
 
-Every org repo is a flake-parts flake on `org-pkgs`, with a devenv CLI
-shell and no flake `devShells` (the `external-systems` skill). uv2nix
-fits it like this; full, tested files are in
-[references/org-recipes.md](references/org-recipes.md).
-
-**Inputs come from org-pkgs.** external-systems/pkgs pins
-`pyproject-nix`, `uv2nix` and `pyproject-build-systems` (each following
-the org nixpkgs), just as it pins `nixpkgs`. A Python repo follows them
-in `flake.nix` and `devenv.yaml` and declares no URL of its own:
-
-```nix
-pyproject-nix.follows = "org-pkgs/pyproject-nix";
-uv2nix.follows = "org-pkgs/uv2nix";
-pyproject-build-systems.follows = "org-pkgs/pyproject-build-systems";
-```
-
-One pin then serves the org, and `nix flake update org-pkgs` +
-`sync-locks` moves flake.lock and devenv.lock together. Bumping uv2nix
-is a pkgs PR (`nix flake update pyproject-nix uv2nix
-pyproject-build-systems` there), merged before consumers update
-`org-pkgs`. Lock `org-pkgs` to pkgs `main` only; an unmerged pkgs
-branch or commit is for local testing
-(`--override-input org-pkgs github:external-systems/pkgs/SHA`), never
-committed.
-
-**Standalone Python repo** (the workspace is the repo):
+Every org Python project is a uv workspace at a repo root, built by
+external-systems/pkgs **`flakeModules.python`** (part of
+`flakeModules.default`) and edited in the **`org-pkgs/devenv/python`**
+shell. Both use one builder, `lib.python.mkWorkspace`
+(`flakeModules/python/workspace.nix` in pkgs), bound to pkgs' own
+uv2nix, pyproject.nix and build-system-pkgs pins. A Python repo declares
+**no** uv2nix input and writes almost no Nix:
 
 ```
-pyproject.toml uv.lock src/NAME/ tests/      # the uv workspace, repo root
-flake-parts/python.nix                       # packages + checks (import-tree)
-flake-parts/_python/python-set.nix           # plain function: workspace -> sets, venvs
-flake-parts/_python/overrides.nix            # fixup overlay
-devenv.yaml devenv.nix                       # editable dev venv, same set
+pyproject.toml uv.lock src/NAME/ tests/   # the uv workspace, repo root
+flake-parts/python.nix                    # optional: perSystem.python settings
+flake-parts/_python/overrides.nix         # optional: {pkgs}: final: prev: {...}
+devenv.yaml                               # imports org-pkgs/devenv + org-pkgs/devenv/python
+.vscode/settings.json, extensions.json    # from the pkgs template
 ```
 
-`_python/` is underscore-prefixed so import-tree skips it: those files
-are plain Nix functions, not flake-parts modules. `python-set.nix` is
-shared by the flake module and `devenv.nix`, so the shell and the build
-use one Python set.
+The module switches itself on when `pyproject.toml` and `uv.lock` exist
+and gives `packages.<project>`/`.default` (scripts wrapped, `pname`,
+`version`, `meta`), `apps.<script>`, `checks.python-{pytest,ty,uv-lock,
+version}`, ruff in `checks.treefmt`, `vmTests.python-cli` and
+`legacyPackages.python`. Generated packages and apps are `mkDefault`: a
+repo that defines one itself wins. Settings, options and the full file
+set: [references/org-recipes.md](references/org-recipes.md). The pkgs
+docs page `documentation/docs/python.md` is the human version.
 
-**A Python package in pkgs** (or any repo that ships many packages):
-vendor the uv project next to the package file
-(`pkgs/NAME/{package.nix,pyproject.toml,uv.lock,src/}`), write
-`package.nix` as a `callPackage` function that takes `uv2nix`,
-`pyproject-nix` and `pyproject-build-systems` as arguments, and wire it
-in an input-closing overlay in `flake-parts/overlays.nix` (the plain
-`overlays/*.nix` files close over no inputs). Package against the
-consumer's nixpkgs: take `python313` from the callPackage scope.
+**The Astral toolchain**, one version of each, the org nixpkgs':
+
+- **uv** edits `uv.lock` only; the venv is Nix's (`UV_NO_SYNC`,
+  `UV_PROJECT_ENVIRONMENT` = the Nix venv, no downloads).
+- **ruff** lints and formats through treefmt (`fmt`, `checks.treefmt`)
+  with Astral's default rules: no `select`, only `extend-select`.
+- **ty** type-checks (`checks.python-ty`, warnings fail; `python.ty.args`)
+  and is the editor language server (VS Code and VSCodium, no Pylance).
+- Never put ruff, ty or pyrefly in a uv dependency group: the editor
+  would pick the PyPI copy and disagree with CI.
+
+Editors, nixd and ty's import resolution:
+[references/toolchain.md](references/toolchain.md).
+
+**Versions follow the org release number**
+`<major>.<minor>.<git rev-list --count HEAD>`:
+
+- `pyproject.toml` holds `"<major>.<minor>.0"`, matching `major`/`minor`
+  in `.github/workflows/ci.yml` (`checks.python-version`).
+- The shipped set stamps the patch from the flake's `self.revCount`
+  (store name, wheel metadata, `importlib.metadata`). Checks build the
+  unstamped set. `github:` inputs and dirty trees have no revCount and
+  keep `X.Y.0`; consumers wanting the exact number use `git+https://`.
+- Every CLI answers `--version` with `<project> <version>`; the
+  `python-cli` VM test asserts it. The Typer pattern is in
+  [references/org-recipes.md](references/org-recipes.md).
+
+**Consuming org Python packages:**
+
+| Consumer | How |
+|---|---|
+| Nix config (an app, a CLI, a service) | pkgs takes the repo as `git+https://github.com/OWNER/REPO?ref=main` with `inputs.org-pkgs.follows = ""` and names the package in its overlay (static names: never merge the repo's whole overlay) |
+| Python code in another repo (a library) | `uv add git+https://github.com/OWNER/REPO --tag RELEASE`: a uv git source pinned in `uv.lock`, no flake input. uv2nix stamps it from its fetched commit count |
+
+- Libraries reach Python code through `uv.lock` only, never a flake
+  overlay (two resolutions, last overlay wins, double bumps).
+- Keep the dependency line unversioned (`"mylib"`); the tag is the pin.
+  uv reads `X.Y.0` from the source and rejects `mylib>=X.Y.N`.
+- uv follows a git dependency's own git sources (a library on another
+  org library): consumers do not repeat them.
+- Private repos: `gh auth setup-git` locally; CI gives git the
+  `private-repos` token (Nix's git fetcher ignores `access-tokens`).
+
+**A vendored third-party Python app in pkgs** (headroom): vendor the uv
+project next to the package file
+(`pkgs/NAME/{package.nix,pyproject.toml,uv.lock}`), write `package.nix`
+as a `callPackage` function taking `uv2nix`, `pyproject-nix` and
+`pyproject-build-systems`, and wire it in the input-closing overlay in
+`flake-parts/overlays.nix`. Its version is upstream's; no stamping.
 
 **Start a Python repo** (or add Python to an org repo):
 
-1. `nix flake init -t github:external-systems/pkgs` (new repo only),
-   then add the three `follows` lines to `flake.nix` and `devenv.yaml`;
-   `nix flake lock`, `sync-locks`.
+1. `nix flake init -t github:external-systems/pkgs` (new repo only);
+   uncomment `org-pkgs/devenv/python` in `devenv.yaml`.
 2. Create the uv project. The devenv shell cannot evaluate before
    `uv.lock` exists, so take uv and the interpreter from the org
    nixpkgs:
@@ -134,43 +160,45 @@ consumer's nixpkgs: take `python313` from the callPackage scope.
    nix shell --inputs-from . nixpkgs#uv nixpkgs#python313 -c sh -c '
      export UV_NO_SYNC=1 UV_PYTHON_DOWNLOADS=never
      uv init --package --name NAME --python "$(command -v python3.13)" .
+     uv version 0.1.0   # <major>.<minor>.0 of ci.yml
      uv add --dev pytest'
    ```
 
    Without `--python`, uv writes `requires-python` from whatever Python
-   is on PATH. The backend is `uv_build`: it builds and installs editable
-   with no overrides (hatchling needs `editables`, see the recipe). Later
-   `uv` commands run inside the devenv shell, which sets all of this.
-3. Copy `python-set.nix`, `overrides.nix`, `python.nix` and `devenv.nix`
-   from [references/org-recipes.md](references/org-recipes.md); rename
-   `hello-uv` to NAME and the python to match `requires-python`.
-4. `git add -A`, `fmt`, `check`.
+   is on PATH. Keep the `uv_build` backend: it builds and installs
+   editable with no overrides.
+3. Add `--version` to every script (the Typer pattern), and
+   `flake-parts/python.nix` only if the scripts exec programs
+   (`runtimeInputs`).
+4. `git add -A`, `fmt`, `check`, `vm-test python-cli --remote`.
 
-Done when `check` is green (pytest and `uv-lock` ran), `nix run .#NAME`
-works, and in `devenv shell`
-`python -c 'import NAME; print(NAME.__file__)'` prints a path in the
-repo, not in `/nix/store`.
+Done when `check` is green (ruff, ty, pytest, uv-lock, version ran),
+`nix run .#SCRIPT -- --version` prints `NAME X.Y.0` (a dirty tree) and in
+`devenv shell` `python -c 'import NAME; print(NAME.__file__)'` prints a
+path in the repo, not in `/nix/store`.
 
 ## Tool loop
 
-Inside the devenv shell (`uv`, `fmt`, `check` on PATH; outside it:
-`devenv shell -- CMD`):
+Inside the devenv shell (`uv`, `ruff`, `ty`, `fmt`, `check` on PATH;
+outside it: `devenv shell -- CMD`):
 
 ```sh
 uv add httpx               # or edit pyproject.toml, then: uv lock
 uv lock --upgrade-package httpx   # bump one dependency; uv lock --upgrade for all
+pytest && ty check         # fast loop in the shell
 git add -A                 # uv.lock untracked = "is not tracked by Git"
-fmt && check               # check runs pytest + the uv-lock freshness check
-nix build .#NAME -L && ./result/bin/NAME
+fmt && check               # ruff, ty, pytest, uv-lock, version, docs
+nix build && ./result/bin/SCRIPT --version
+vm-test python-cli --remote --rebuild
 ```
 
-- Re-enter the shell (or let devenv reload) after `uv add`; the editable
-  venv is rebuilt from the new lock. Editing `.py` files needs nothing.
-- `UV_NO_SYNC=1` keeps uv from creating `.venv`; uv only edits the lock.
-  `uv run` and `uv sync` bypass the Nix venv: call the scripts directly
-  (`pytest`, `NAME`).
-- Pick up a newer uv2nix after its pkgs PR merges: `nix flake update
-  org-pkgs`, then `sync-locks`, in one commit.
+- Editing `.py` files rebuilds nothing; `uv add` rebuilds the venv on
+  the next shell entry.
+- `uv run` uses the Nix venv (`UV_PROJECT_ENVIRONMENT`); `uv sync` cannot
+  write the store and fails loudly. Call scripts directly.
+- Pick up a newer uv2nix, ruff or ty after their pkgs PR merges:
+  `nix flake update org-pkgs`, then `sync-locks`, in one commit. A ty
+  bump can add diagnostics (beta, 0.0.x): fix them in that PR.
 - Read `nix log /nix/store/...drv` for a failed package build; `-L`
   streams it.
 
@@ -187,17 +215,23 @@ The full symptom table with exact error text is
 | `ModuleNotFoundError: No module named 'flit_core'` (any backend) in a package build | sdist with no build system: `resolveBuildSystem` in overrides, or prefer its wheel |
 | `auto-patchelf could not satisfy dependency libX.so` | Wheel needs a native lib: `buildInputs = [pkgs.X]` |
 | `No module named 'editables'` building the editable venv | hatchling member: add `editables` (recipe) |
-| `Editable root was passed as a Nix store path` | `mkEditablePyprojectOverlay {root = "$DEVENV_ROOT";}` |
+| `Editable root was passed as a Nix store path` | `mkEditablePyprojectOverlay {root = "/abs/checkout";}` (a non-store string; the org devenv module passes `config.devenv.root`) |
 | `Two or more packages are trying to provide the same file` | `venvIgnoreCollisions` on the venv |
 | New dependency missing at runtime, no error | Stale lock: `uv lock`, `git add uv.lock` |
 | `attribute 'foo' missing` | Name not in the resolved lock for this platform/spec; check name, markers, extras |
+| Package or `--version` stuck at `X.Y.0` | No `self.revCount`: a `github:` input (use `git+https`), a dirty tree, or `--override-input` |
+| ty `unresolved-import` on a workspace member | ty ignores editable `.pth` files: add the member's `src` to `[tool.ty.environment] root` |
 
 ## References
 
-- [references/org-recipes.md](references/org-recipes.md): every file of
-  the standalone layout, the pkgs overlay package, workspaces with several
-  members, OCI images, the impure-shell alternative. Read before creating
-  or restructuring a Python flake.
+- [references/org-recipes.md](references/org-recipes.md): the module's
+  options and outputs, the repo files, `--version`, versioning internals,
+  git dependencies, workspaces, the pkgs vendored package, shipping. Read
+  before creating or restructuring a Python repo.
+- [references/toolchain.md](references/toolchain.md): ty, ruff and uv
+  settings, VS Code / VSCodium (extensions, interpreter, language
+  server), nixd. Read when an editor, a linter or the type checker
+  misbehaves or a repo's editor setup is created.
 - [references/api.md](references/api.md): every uv2nix and
   pyproject.nix function and argument (`loadWorkspace`, the overlays,
   `deps`, the `tool.uv` settings honoured, `mkVirtualEnv`, `hacks`,

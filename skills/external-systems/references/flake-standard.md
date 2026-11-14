@@ -18,8 +18,10 @@ snippets explain what the template contains.
 |---|---|
 | `inputs.org-pkgs.flakeModules.treefmt` | org linters: `formatter`, `checks.treefmt` |
 | `inputs.org-pkgs.flakeModules.docs` | MkDocs site + reveal.js deck: `packages.documentation`, `packages.slides`, `apps.watch-documentation`, `apps.serve-slides` (the `org-docs` skill) |
-| `inputs.org-pkgs.flakeModules.default` (also `.default`) | treefmt + docs, `checks.lock-sync`, `apps.sync-locks`, `documentation`/`slides` as checks |
+| `inputs.org-pkgs.flakeModules.python` | Python repos (`pyproject.toml` + `uv.lock` at the root, switches itself on): uv2nix packages versioned `<major>.<minor>.<commits>`, apps, `checks.python-{pytest,ty,uv-lock,version}`, ruff in treefmt, `vmTests.python-cli` (the `uv2nix` skill) |
+| `inputs.org-pkgs.flakeModules.default` | treefmt + docs + vmTests + python, `checks.lock-sync`, `apps.sync-locks`, `documentation`/`slides` as checks |
 | `org-pkgs/devenv` (devenv.yaml `imports`) | the org shell: `fmt`, `check`, `sync-locks`, `docs-build`, `docs`, `slides` scripts; `devenv up` serves docs :8981 and slides :8982; `devenv test` gates |
+| `org-pkgs/devenv/python` (devenv.yaml `imports`, Python repos) | the editable uv2nix venv, `uv`, `ruff`, `ty`, the uv settings |
 | `templates.default` | the whole layout below |
 
 The flake modules are bound to pkgs' own inputs (`treefmt-nix`,
@@ -121,9 +123,10 @@ Rules:
   devenv modules as a module argument, so an input named `pkgs` replaces
   nixpkgs' `pkgs` and fails with "attribute 'bash' missing".
 
-- `devenv.nix` is a plain devenv module. Flake outputs are not visible
-  there; anything it needs from another flake comes in as a `devenv.yaml`
-  input (following `nixpkgs`).
+- `devenv.nix` is a plain devenv module. The repo's own flake outputs
+  are not visible there; anything it needs from another flake comes in
+  as a `devenv.yaml` input (following `nixpkgs`). Inputs are whole
+  flakes: org devenv modules call `inputs.org-pkgs.lib.*`.
 - Repo-scoped commands are devenv `scripts` (or `tasks`); long-running
   dev services are `processes`/`services`. Consumer-facing commands are
   root flake `apps`/`packages`.
@@ -169,7 +172,11 @@ Every repo commits `.vscode/settings.json` from the template and sets
 `currentSystem.options`; lazy, consumers never evaluate them). nixd
 evaluates `./.` from the workspace root, so one file fits every clone.
 Top-level keys are VS Code setting IDs (`nix.serverPath`), written
-dotted: see the JSON nesting exception in the `nix-style` skill.
+dotted: see the JSON nesting exception in the `nix-style` skill. The
+nixpkgs expression applies `org-pkgs.overlays.default` (pkgs itself:
+`f.overlays.default`), so hover and completion show org packages with
+their versions. Python repos add the python/ty/ruff settings and
+extensions from the template (the `uv2nix` skill).
 
 ```json
 {
@@ -178,7 +185,7 @@ dotted: see the JSON nesting exception in the `nix-style` skill.
   "nix.serverSettings": {
     "nixd": {
       "nixpkgs": {
-        "expr": "import (builtins.getFlake (builtins.toString ./.)).inputs.nixpkgs { }"
+        "expr": "let f = builtins.getFlake (builtins.toString ./.); in import f.inputs.nixpkgs { overlays = [ f.inputs.org-pkgs.overlays.default ]; }"
       },
       "formatting": {
         "command": ["alejandra", "--quiet"]

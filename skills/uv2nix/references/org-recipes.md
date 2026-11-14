@@ -1,291 +1,221 @@
 # uv2nix recipes for org repos
 
-Every Nix file here except the ones marked otherwise was built and run
-on 2026-11-09 in a demo repo (`hello-uv`: httpx + rich, a pytest group,
-`uv_build`), with `nix flake check`, `nix run` and `devenv shell`
-passing. Replace `hello-uv` with the project name (the `[project] name`,
-which is also the attribute in `pythonSet`).
+Verified on 2026-11-14 by moving andrewthomaslee/moscripts (four Typer
+CLIs, pytest, `uv_build`) onto external-systems/pkgs
+`flakeModules.python`: `nix run .#flake-check`, `vm-test --all --remote
+--rebuild` and `devenv shell` passing. The module's source is
+`flakeModules/python.nix` and `flakeModules/python/workspace.nix` in
+pkgs; read them when an option below is not enough.
 
-Contents: inputs; standalone repo files; the devenv shell (pure and
-impure); a package in pkgs; workspaces with several members; shipping
-(OCI image, NixOS service, wheels).
+Contents: the repo files; module options and outputs; versioning
+internals; `--version`; git dependencies; workspaces; a package vendored
+in pkgs; shipping.
 
-## Inputs
+## The repo files
 
-external-systems/pkgs pins the three inputs (each following its
-nixpkgs). `flake.nix` follows them, below the template's org inputs,
-and locks nothing new:
-
-```nix
-inputs = {
-  org-pkgs.url = "github:external-systems/pkgs";
-  nixpkgs.follows = "org-pkgs/nixpkgs";
-  flake-parts.follows = "org-pkgs/flake-parts";
-  import-tree.follows = "org-pkgs/import-tree";
-
-  # Python (uv2nix): the org pins from external-systems/pkgs.
-  pyproject-nix.follows = "org-pkgs/pyproject-nix";
-  uv2nix.follows = "org-pkgs/uv2nix";
-  pyproject-build-systems.follows = "org-pkgs/pyproject-build-systems";
-};
-```
-
-Then `nix flake lock` and `git add flake.lock`. `org-pkgs` stays on pkgs
-`main`: to try an unmerged pkgs change, pass
-`--override-input org-pkgs github:external-systems/pkgs/SHA` on the
-command line, and never commit that lock. A newer uv2nix arrives as a
-pkgs PR; after it merges, `nix flake update org-pkgs` + `sync-locks`.
-
-## Standalone repo
-
-The uv workspace is the repo root: `pyproject.toml`, `uv.lock`,
-`src/hello_uv/`, `tests/`. Create it with
-`uv init --package --name hello-uv .`, then `uv add` /
-`uv add --dev pytest`.
-
-### flake-parts/_python/python-set.nix
-
-A plain function (not a module: the `_` keeps import-tree out), shared by
-the flake module and devenv.
-
-```nix
-# The uv workspace at the repo root as a pyproject.nix Python set. A
-# plain function, shared by flake-parts/python.nix (packages, checks)
-# and devenv.nix (the editable dev venv), so both build one set.
-{
-  pkgs,
-  lib,
-  uv2nix,
-  pyproject-nix,
-  pyproject-build-systems,
-}: let
-  workspace = uv2nix.lib.workspace.loadWorkspace {workspaceRoot = ../..;};
-
-  python = pkgs.python313;
-
-  pythonSet =
-    (pkgs.callPackage pyproject-nix.build.packages {inherit python;}).overrideScope
-    (lib.composeManyExtensions [
-      pyproject-build-systems.overlays.wheel
-      (workspace.mkPyprojectOverlay {sourcePreference = "wheel";})
-      (import ./overrides.nix {inherit pkgs;})
-    ]);
-
-  # Workspace members installed as pointers into $DEVENV_ROOT, expanded
-  # by Python at import time: edits apply without a rebuild.
-  editableSet = pythonSet.overrideScope (workspace.mkEditablePyprojectOverlay {
-    root = "$DEVENV_ROOT";
-  });
-in {
-  inherit workspace python pythonSet editableSet;
-  venv = pythonSet.mkVirtualEnv "hello-uv-env" workspace.deps.default;
-  devVenv = editableSet.mkVirtualEnv "hello-uv-dev-env" workspace.deps.all;
-}
-```
-
-- `workspaceRoot` is an unfiltered path. Filtering it
-  (`lib.cleanSource`, `filterSource`) turns every read into
-  import-from-derivation and breaks editables; filter per package
-  instead (overrides.md, "Source filtering").
-- `python`: choose an interpreter inside the lock's `requires-python`.
-  To derive it:
-  `lib.head (pyproject-nix.lib.util.filterPythonInterpreters {inherit (workspace) requires-python; inherit (pkgs) pythonInterpreters;})`.
-- A member built with **hatchling** (or another backend that builds
-  editables through the `editables` package) fails the editable build
-  with `No module named 'editables'`. Compose a fix after the editable
-  overlay:
-
-  ```nix
-  editableSet = pythonSet.overrideScope (lib.composeManyExtensions [
-    (workspace.mkEditablePyprojectOverlay {root = "$DEVENV_ROOT";})
-    # hatchling builds editables through the `editables` package, which
-    # uv.lock never lists.
-    (final: prev: {
-      hello-uv = prev.hello-uv.overrideAttrs (old: {
-        nativeBuildInputs = old.nativeBuildInputs ++ final.resolveBuildSystem {editables = [];};
-      });
-    })
-  ]);
-  ```
-
-### flake-parts/_python/overrides.nix
-
-```nix
-# Build fixups uv.lock cannot express: native libraries for wheels,
-# build systems for sdists. Plain overlay over the Python set.
-{pkgs}: _final: _prev: {}
-```
-
-Grows entries like `foo = prev.foo.overrideAttrs (old: {...});`
-(overrides.md). Once an entry needs `final`, rename `_final` to `final`
-(deadnix flags unused names otherwise; `pkgs` unused is fine as a
-formal).
-
-### flake-parts/python.nix
-
-```nix
-# Packages and checks from the uv workspace (flake-parts/_python/).
-{inputs, ...}: {
-  perSystem = {
-    pkgs,
-    lib,
-    ...
-  }: let
-    py = import ./_python/python-set.nix {
-      inherit pkgs lib;
-      inherit (inputs) uv2nix pyproject-nix pyproject-build-systems;
-    };
-    inherit (pkgs.callPackages inputs.pyproject-nix.build.util {}) mkApplication;
-    testVenv = py.pythonSet.mkVirtualEnv "hello-uv-test-env" py.workspace.deps.all;
-
-    # Only what the checks read, so docs or Nix edits do not rerun them.
-    # Add each workspace member's pyproject.toml when there are several.
-    checkSrc = lib.fileset.toSource {
-      root = ../.;
-      fileset = lib.fileset.unions [../pyproject.toml ../uv.lock ../src ../tests];
-    };
-  in {
-    packages = {
-      # The app alone: bin/, share/ and the package, no venv cruft.
-      hello-uv = mkApplication {
-        inherit (py) venv;
-        package = py.pythonSet.hello-uv;
-      };
-      hello-uv-venv = py.venv;
-    };
-
-    checks = {
-      pytest = pkgs.runCommand "hello-uv-pytest" {nativeBuildInputs = [testVenv];} ''
-        cd ${checkSrc}
-        pytest -p no:cacheprovider tests
-        touch $out
-      '';
-      # uv.lock still matches pyproject.toml. uv2nix builds a stale lock
-      # without complaint, silently missing new dependencies.
-      uv-lock = pkgs.runCommand "hello-uv-uv-lock" {nativeBuildInputs = [pkgs.uv];} ''
-        cp -r ${checkSrc}/. . && chmod -R u+w .
-        export HOME=$TMPDIR UV_NO_CACHE=1 UV_PYTHON_DOWNLOADS=never
-        uv lock --check --offline --python ${py.python.interpreter}
-        touch $out
-      '';
-    };
-
-    # For inspection: nix eval .#legacyPackages.x86_64-linux.pythonSet.httpx.version
-    legacyPackages.pythonSet = py.pythonSet;
-  };
-}
-```
-
-- `mkApplication` keeps the package's `meta`; pyproject.nix sets
-  `mainProgram` when the project has exactly one `[project.scripts]`
-  entry, so `nix run .#hello-uv` works. With several scripts, set it in
-  an `overrideAttrs`.
-  Expose the venv too when users need `python` with the deps.
-- `uv lock --check --offline` runs in the sandbox with no network or
-  cache: an up-to-date lock passes, a stale one fails. It is the only
-  guard against the silent stale-lock build.
-- pytest runs from the store copy against the installed package (not
-  editable), so it tests what ships. `-p no:cacheprovider` because the
-  source is read-only.
-- Checks are built by `nix flake check` (org CI `ci / flake-check`), so
-  keep them offline and hermetic.
-
-## The devenv shell
-
-### Pure: the uv2nix editable venv (verified)
-
-`devenv.yaml`: the template's inputs plus the three org pins:
+A Python repo is the org template plus the uv workspace. Nothing in
+`flake.nix` is Python-specific: `org-pkgs.flakeModules.default` brings
+`flakeModules.python`, which switches on when `pyproject.toml` and
+`uv.lock` are at the root.
 
 ```yaml
+# devenv.yaml
 inputs:
   org-pkgs:
-    url: github:external-systems/pkgs
+    url: github:external-systems/pkgs/<rev in flake.lock>   # sync-locks
   nixpkgs:
     follows: org-pkgs/nixpkgs
-  pyproject-nix:
-    follows: org-pkgs/pyproject-nix
-  uv2nix:
-    follows: org-pkgs/uv2nix
-  pyproject-build-systems:
-    follows: org-pkgs/pyproject-build-systems
 imports:
   - org-pkgs/devenv
+  - org-pkgs/devenv/python
 ```
 
-`devenv.nix`:
-
 ```nix
-# The editable uv2nix venv: hello-uv and every dependency group on PATH,
-# workspace sources live from $DEVENV_ROOT. uv edits the lock only.
-{
-  pkgs,
-  lib,
-  inputs,
-  ...
-}: let
-  py = import ./flake-parts/_python/python-set.nix {
-    inherit pkgs lib;
-    inherit (inputs) uv2nix pyproject-nix pyproject-build-systems;
-  };
-in {
-  packages = [py.devVenv pkgs.uv];
-
-  env = {
-    UV_NO_SYNC = "1";
-    UV_PYTHON = py.python.interpreter;
-    UV_PYTHON_DOWNLOADS = "never";
-  };
-
-  # nixpkgs Python setup hooks leak PYTHONPATH; it beats the venv.
-  enterShell = "unset PYTHONPATH";
+# devenv.nix: only what the repo's own commands need beyond the venv
+{pkgs, ...}: {
+  packages = [pkgs.gum pkgs.mpv];
 }
 ```
 
-- `$DEVENV_ROOT` is set by devenv; the `.pth` files keep the literal
-  `$DEVENV_ROOT/src` and Python expands it at import time. A store path
-  as root is refused at eval.
-- Leave `languages.python` off: it would add its own interpreter and
-  venv in front of this one.
-- Both locks resolve the three inputs through `org-pkgs`, so
-  `sync-locks` (which re-pins devenv.yaml's `org-pkgs` to flake.lock's
-  rev) keeps uv2nix identical in the shell and the build.
-- Meson-python, Cython or other compiled editables: add
-  `inputs.pyproject-nix.packages.${pkgs.stdenv.system}.build-editable`
-  to `packages` and run `build-editable` in `enterShell` (rebuilds the
-  in-tree `.so` files).
-
-### Impure: devenv runs `uv sync` (not built in the demo)
-
-For a repo that ships nothing through Nix, or where the dev shell may
-differ from the build. Options from devenv 2.x `languages.python`:
-
 ```nix
-{pkgs, ...}: {
-  languages.python = {
-    enable = true;
-    package = pkgs.python313;
-    uv = {
-      enable = true;
-      sync = {
-        enable = true;
-        allGroups = true;
-      };
+# flake-parts/python.nix: only settings that differ (all optional)
+_: {
+  perSystem = {pkgs, ...}: {
+    python = {
+      runtimeInputs = [pkgs.gum pkgs.uv pkgs.mpv]; # programs the scripts exec (--suffix PATH)
+      checkInputs = [pkgs.which];                  # extra PATH in the checks
     };
   };
 }
 ```
 
-uv then owns `.venv` (gitignored) and downloads wheels at shell entry.
-Wheels with native code may need `languages.python.manylinux.enable` or
-`libraries`. Use `uv run` freely in this mode only.
+```nix
+# flake-parts/_python/overrides.nix: build fixups (references/overrides.md)
+{pkgs}: _final: prev: {
+  psycopg2 = prev.psycopg2.overrideAttrs (old: {
+    buildInputs = (old.buildInputs or []) ++ [pkgs.libpq];
+  });
+}
+```
 
-devenv also has `config.languages.python.import ./path {}`, a
-one-line uv2nix build (wheel preference, `deps.default`, no overrides
-hook, `pyproject-build-systems.overlays.default`). It is fine for a
-throwaway output; the flake recipe above is the org pattern because it
-takes overrides and exposes the set.
+`pyproject.toml` essentials:
 
-## A Python package in pkgs (or any multi-package repo)
+```toml
+[project]
+name = "NAME"
+version = "0.1.0"            # <major>.<minor>.0 = ci.yml major/minor
+requires-python = ">=3.13"   # also ruff's target and ty's python-version
+
+[project.scripts]
+NAME = "NAME.cli:app"
+
+[build-system]
+requires = ["uv_build>=0.13,<0.14"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = ["pytest>=8"]          # never ruff, ty or pyrefly: they come from Nix
+```
+
+`.vscode/` comes from the pkgs template (references/toolchain.md).
+
+## Module options and outputs
+
+| Option | Default | Use |
+|---|---|---|
+| `python.enable` (top level) | `pyproject.toml` and `uv.lock` exist | off: no outputs, uv2nix never fetched |
+| `python.vmTest.enable` (top level) | `true` | the generated `python-cli` VM test |
+| `perSystem.python.runtimeInputs` | `[]` | programs the scripts exec; also on PATH in checks |
+| `perSystem.python.checkInputs` | `[]` | extra PATH in the checks only |
+| `perSystem.python.checks.<name>` | `{}` | shell script, run in a copy of the sources with the test venv: `checks.python-<name>` |
+| `perSystem.python.overrides` | `flake-parts/_python/overrides.nix` if present | overlay or path |
+| `perSystem.python.python` | first nixpkgs Python in `requires-python` | interpreter |
+| `perSystem.python.ty.args` | `["--error-on-warning"]` | `[]` lets ty warnings pass |
+| `perSystem.python.workspace` | read-only | the `mkWorkspace` result |
+
+| Output | What |
+|---|---|
+| `packages.<project>`, `.default` | `mkApplication` wrapped with `makeWrapper` per script (Typer usage lines show the real name), `pname`/`version`/`meta` (`description`, `homepage` from `[project.urls]`, `mainProgram` for one script); a library (no scripts) is its venv |
+| `packages.<project>-venv` | the shipped venv |
+| `apps.<script>` | every `[project.scripts]` entry |
+| `checks.python-pytest` | `pytest -p no:cacheprovider tests` on the installed (not editable) package, when `tests/` exists |
+| `checks.python-ty` | `ty check --python <test venv> --error-on-warning` |
+| `checks.python-uv-lock` | `uv lock --check --offline` (works with git dependencies) |
+| `checks.python-version` | pyproject `X.Y.0` vs ci.yml `major`/`minor` |
+| `checks.treefmt` | + `ruff-check` (`--fix`, priority 1) and `ruff-format` |
+| `vmTests.python-cli` | every script `--version` (`^<project> \d+\.\d+\.\d+$`) and `--help` as user `alice` on an offline VM |
+| `legacyPackages.python` | `pythonSet`, `shipSet`, `venv`, `testVenv` |
+
+The checks copy only `pyproject.toml`, `uv.lock`, `README.md`,
+`LICENSE`, `src`, `tests` and the workspace members' directories, so
+docs and Nix edits do not rerun them.
+
+## Versioning internals
+
+- `shipSet` = `pythonSet` + the own projects stamped with
+  `self.revCount`. The stamp rewrites the first `version = "..."` in the
+  `[project]` table of the package's `pyproject.toml` in `postPatch`
+  (the build backend reads it, so the wheel metadata agrees) and sets
+  `version` (restating `src`, which silences nixpkgs' "overridden with
+  version but not src" warning).
+- Stamping uses static names: the own projects and git dependencies come
+  from `uv.lock` (`source.editable`, `source.git`). Deciding from the
+  derivations (`drv.src ? revCount`) recurses through the overlay.
+- `self.revCount` exists for a clean git checkout and `git+https`/`git+ssh`
+  inputs, not for `github:` inputs, a dirty tree, or a build with
+  `--override-input` (the changed lock makes the tree dirty). To test
+  stamping against an unmerged pkgs, lock it
+  (`nix flake lock --override-input org-pkgs git+file:///path/to/pkgs?rev=SHA`),
+  commit locally, build, and reset before pushing.
+- `checks.python-version` reads `major:`/`minor:` lines from
+  `.github/workflows/ci.yml` (no YAML parser in Nix) and passes with a
+  message when there is no ci.yml.
+
+## --version
+
+Every CLI answers `--version` with `<project> <version>` from
+`importlib.metadata`. Typer, without turning a single command into a
+group:
+
+```python
+# NAME/utilities.py
+from importlib.metadata import version as dist_version
+from typing import Annotated
+
+import typer
+
+
+def _print_version(value: bool | None) -> None:
+    if value:
+        typer.echo(f"NAME {dist_version('NAME')}")
+        raise typer.Exit
+
+
+VersionOption = Annotated[
+    bool | None,
+    typer.Option("--version", callback=_print_version, is_eager=True,
+                 help="Show the version and exit."),
+]
+
+# every command:
+@app.command()
+def main(_version: VersionOption = None, ...) -> None: ...
+```
+
+Test it with `typer.testing.CliRunner().invoke(app, ["--version"])`.
+Write Typer parameters as `Annotated[T, typer.Option(...)] = default`:
+ruff's default B008 flags `param: Path = Option(Path(...))`.
+
+## Git dependencies (an org library in another repo)
+
+```sh
+uv add git+https://github.com/OWNER/mylib --tag 0.3.41
+```
+
+```toml
+dependencies = ["mylib"]
+[tool.uv.sources]
+mylib = { git = "https://github.com/OWNER/mylib", tag = "0.3.41" }
+```
+
+- `uv.lock` records `source = { git = "...?tag=0.3.41#<sha>" }` with
+  version `0.3.0` (the source's pyproject).
+- uv2nix fetches it with `builtins.fetchGit {url; rev; allRefs = true;
+  submodules = true;}` (eval time, pure: the rev is locked), which
+  returns `revCount`. The builder stamps git dependencies whose GitHub
+  owner is in `stampOwners` (`external-systems`, `andrewthomaslee`)
+  with that count, so the venv reports `0.3.41`.
+- Transitive git sources are followed by uv (verified: app → liba (git)
+  → libc (git, declared only in liba)).
+- Private repos: git credentials, not Nix `access-tokens` (verified:
+  the Nix git fetcher ignores them). Locally `gh auth setup-git`; in CI
+  the org workflow points git at the `private-repos` token.
+- Co-developing: `mylib = { path = "../mylib", editable = true }` for a
+  while, never committed (uv2nix rejects paths outside the flake).
+
+## Workspaces with several members
+
+```toml
+# root pyproject.toml
+[tool.uv.workspace]
+members = ["packages/*"]
+```
+
+- One `uv.lock` at the root. Every non-virtual member gets
+  `packages.<member>` (scripts wrapped, or a venv for a library) and its
+  scripts' apps; `packages.default` is the root project, else the first
+  member. Members' directories join the check sources.
+- Members depend on each other with
+  `[tool.uv.sources] lib-a = {workspace = true;}`; keep those
+  dependencies unversioned (stamped versions would not match a `>=`).
+- A member with `[tool.uv] package = false` is virtual: kept in the set
+  for its dependencies, never built or made editable.
+- ty does not read the editable `.pth` files: list members outside
+  `./src` in `[tool.ty.environment] root` (references/toolchain.md).
+- The devenv shell makes every member editable from its `src/`; members
+  without `src/` keep their full source (rebuilt on edits).
+
+## A third-party Python app vendored in pkgs
 
 Vendor the uv project next to the package file:
 `pkgs/NAME/{package.nix,pyproject.toml,uv.lock,src/}`. For a third-party
@@ -347,27 +277,6 @@ Add it to `flake.overlays.default`'s list, export it, and list it in
 `flake-parts/packages.nix`. Inside pkgs the three are its own inputs
 (`inputs.uv2nix` etc.); overlays are lazy, so consumers that never read
 the package never fetch them.
-
-## Workspaces with several members
-
-```toml
-# root pyproject.toml
-[tool.uv.workspace]
-members = ["packages/*"]
-```
-
-- One `uv.lock` at the root; `loadWorkspace {workspaceRoot = ../..;}`
-  finds every member. A root without `[project]` is a virtual root and
-  is not itself a package.
-- `workspace.deps.*` covers every member. For one app's venv name it:
-  `pythonSet.mkVirtualEnv "api-env" {api = [];}`, then
-  `mkApplication {venv; package = pythonSet.api;}`.
-- Members depend on each other with
-  `[tool.uv.sources] lib-a = {workspace = true;}`; uv2nix builds the
-  local member.
-- A member with `[tool.uv] package = false` is virtual: kept in the set
-  for its dependencies, never built or made editable.
-- Add each member's `pyproject.toml` and sources to `checkSrc`.
 
 ## Shipping
 
