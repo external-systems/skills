@@ -128,6 +128,34 @@ extension below is on Open VSX (VSCodium) and the Marketplace.
   hints, go-to, references, rename, symbols, semantic tokens and
   workspace diagnostics. No code lens.
 - Debugging uses `ms-python.debugpy` with the selected interpreter.
+- uv has no editor extension (Astral ships none; the third-party ones
+  wrap `uv sync`, which the org shell disables). Even Better TOML
+  (`tamasfe.even-better-toml`) validates `pyproject.toml`, including the
+  `[tool.uv]`, `[tool.ruff]` and `[tool.ty]` tables, from the schema store.
+
+### The user-level editor (homeSpec.programs.vscodium)
+
+On fleet machines VSCodium itself comes from external-systems/modules
+`homeModules.vscodium`. `homeSpec.programs.vscodium.languages.python.enable`
+gives the same standard user-wide, for folders without the template's
+`.vscode/` (a scratch dir, a non-org repo):
+
+| | User level (modules) | Workspace (repo `.vscode/`) |
+|---|---|---|
+| Extensions | `ms-python.python`, `ms-python.debugpy`, `astral-sh.ty`, `charliermarsh.ruff`, `tamasfe.even-better-toml`; no basedpyright or Pylance | `recommendations` above |
+| `ty.path`, `ruff.path` | the org nixpkgs binaries in the store (`lib.getExe pkgs.ty`/`ruff`) | `.devenv/profile/bin/{ty,ruff}` |
+| Interpreter | ms-python's discovery; `python.createEnvironment.trigger = "off"` (no `.venv`) | `.devenv/profile/bin/python` |
+| Save actions, pytest, no terminal activation | same | same |
+
+Workspace settings win, so inside an org repo the editor uses the repo's
+profile; outside, the store binaries are still the org nixpkgs versions,
+so the editor and CI agree everywhere. Extensions come from
+nix-community/nix-vscode-extensions through pkgs `overlays.vscode-extensions`
+(`pkgs.open-vsx-release.<publisher>.<name>`): Open VSX's ty-vscode can
+trail the Marketplace by a few releases, which does not matter because
+`ty.path` decides the ty version. With `mutableExtensions = true`
+(the default) an extension installed by hand from Open VSX survives a
+deploy: remove a stale basedpyright with "Uninstall".
 
 ## nixd
 

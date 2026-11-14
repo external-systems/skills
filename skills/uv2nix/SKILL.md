@@ -230,7 +230,8 @@ The full symptom table with exact error text is
   before creating or restructuring a Python repo.
 - [references/toolchain.md](references/toolchain.md): ty, ruff and uv
   settings, VS Code / VSCodium (extensions, interpreter, language
-  server), nixd. Read when an editor, a linter or the type checker
+  server; the repo `.vscode/` and the user-level
+  `homeSpec.programs.vscodium` defaults), nixd. Read when an editor, a linter or the type checker
   misbehaves or a repo's editor setup is created.
 - [references/api.md](references/api.md): every uv2nix and
   pyproject.nix function and argument (`loadWorkspace`, the overlays,
