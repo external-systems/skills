@@ -38,7 +38,7 @@ machines.
 
 | Repo | Owns | Never holds |
 |---|---|---|
-| **pkgs** | The single nixpkgs, flake-parts and import-tree every repo follows. Packages and `overlays.{default,kubernetes,ifstate,tools}`, the code-agent image, `flakeModules.default` (also `.treefmt`, `.docs`), the org devenv shell (`org-pkgs/devenv`), the repo template, `org-ci.yml`. | Inventory, clan vars, fleet policy |
+| **pkgs** | The single nixpkgs, flake-parts and import-tree every repo follows. Packages and `overlays.{default,kubernetes,ifstate,tools}`, the code-agent image, `flakeModules.default` (also `.treefmt`, `.docs`, `.vmTests`, `.python`), the org devenv shell (`org-pkgs/devenv`, `org-pkgs/devenv/python`), the repo template, `org-ci.yml`. | Inventory, clan vars, fleet policy |
 | **skills** | Every agent skill (`skills/`), external sources as `skills-*` inputs, presets, `mkSkillsTree`, `mkSkillsRuntime`, the skill checks and apps. See the `skills-repo` skill. | Secrets, IPs, hostnames |
 | **modules** | Reusable NixOS (`nixosModules.*`, `hostSpec.*`) and home-manager (`homeModules.*`, `homeSpec.*`) modules, all off until enabled. `homeModules.agents` installs the skills tree. | Machines, users, packages, IPs, account ids |
 | **not-secrets** | The values schema, `lib`, `flakeModules.{values,checks}`, public placeholder values (RFC 5737/3849/7042/2606 ranges only). | Any real value (`checks.placeholders-only`) |
@@ -94,9 +94,14 @@ repos start from `nix flake init -t github:external-systems/pkgs`.
   (the nixpkgs package set). One
   nixpkgs for the org: no second nixpkgs, no `pkgs.unstable`.
 - **Imports `inputs.org-pkgs.flakeModules.default`**: treefmt (formatter,
-  `checks.treefmt`), docs and slides as checks, `checks.lock-sync`,
-  `apps.sync-locks`. Never copy them into a repo; a missing feature is a
-  pkgs PR.
+  `checks.treefmt`), docs and slides as checks, VM tests,
+  `checks.lock-sync`, `apps.sync-locks`, and Python (uv2nix, ruff, ty)
+  when `pyproject.toml` + `uv.lock` exist. Never copy them into a repo; a
+  missing feature is a pkgs PR.
+- **Python repos** add no input: a uv workspace at the root, `org-pkgs/devenv/python`
+  in `devenv.yaml`, `pyproject.toml` version `<major>.<minor>.0` matching
+  ci.yml (Nix stamps the commit count). Consumers take a Python repo as
+  `git+https://…?ref=main` for its exact version. The `uv2nix` skill.
 - **No dev partition**, no `dev/flake.nix`: every dev tool comes from
   org-pkgs. Repo checks and apps are ordinary modules (`flake-parts/`,
   `tests/flake-module.nix`). Only pkgs keeps one (its code-agent image
@@ -107,8 +112,8 @@ repos start from `nix flake init -t github:external-systems/pkgs`.
   on :8981, slides on :8982). `devenv.nix` adds the repo's own tools. No
   flake `devShells`.
 - **`.vscode/settings.json`** points nixd at the workspace flake
-  (`builtins.getFlake (builtins.toString ./.)`), with `debug = true;` in
-  `mkFlake`.
+  (`builtins.getFlake (builtins.toString ./.)`) and nixpkgs with the org
+  overlay, with `debug = true;` in `mkFlake`.
 - **One nixpkgs in `flake.lock` and `devenv.lock`.** After
   `nix flake update org-pkgs`, run `sync-locks` in the same commit; never
   move nixpkgs with a bare `devenv update`.
