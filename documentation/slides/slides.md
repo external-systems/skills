@@ -10,7 +10,7 @@ Note: Press `S` for the speaker view, `F` for fullscreen.
 
 - Own skills, grouped (`core`, `developer`, `kubernetes`, ...)
 - External sources pinned as `flake = false` inputs
-- Presets: `base`, `full`, `sandbox`
+- Presets: `base`, `full`
 
 ---
 

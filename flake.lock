@@ -332,7 +332,6 @@
         "skills-fluxcd": "skills-fluxcd",
         "skills-google": "skills-google",
         "skills-mattpocock": "skills-mattpocock",
-        "skills-openshell": "skills-openshell",
         "skills-payloadcms": "skills-payloadcms",
         "skills-supabase": "skills-supabase",
         "skills-terraform": "skills-terraform"
@@ -415,23 +414,6 @@
       "original": {
         "owner": "mattpocock",
         "repo": "skills",
-        "type": "github"
-      }
-    },
-    "skills-openshell": {
-      "flake": false,
-      "locked": {
-        "lastModified": 1790564896,
-        "narHash": "sha256-pRLYDqeQZ2HFckZH/QUFCbp4NV7sjQ4ZyyL/6rcShQo=",
-        "owner": "NVIDIA",
-        "repo": "OpenShell",
-        "rev": "6648bd0c290efbc41ba131ee9831ee45cd431f94",
-        "type": "github"
-      },
-      "original": {
-        "owner": "NVIDIA",
-        "ref": "v0.1.2",
-        "repo": "OpenShell",
         "type": "github"
       }
     },

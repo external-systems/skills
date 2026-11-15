@@ -3,7 +3,7 @@
 ```
 external-systems/skills      skills/<name>/ + skills-* inputs
   ownGroups, selections      -> lists of {src; skillsDir; selectSkills}
-  externalSkills presets     base (= core group), full, sandbox
+  externalSkills presets     base (= core group), full
         |
 external-systems/modules     homeModules.agents
   homeSpec.agents.skills.{preset, extraSources}

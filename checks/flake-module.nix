@@ -98,6 +98,21 @@
           ''
         );
 
+      # external-systems is the router agents load at the start of org
+      # work: detail belongs in its references/, not its SKILL.md.
+      router-size = let
+        size = lib.stringLength (builtins.readFile "${self}/skills/external-systems/SKILL.md");
+        max = 10000;
+      in
+        pkgs.runCommand "router-size" {} (
+          if size <= max
+          then "touch $out"
+          else ''
+            echo "FAIL: skills/external-systems/SKILL.md is ${toString size} chars; keep it at ${toString max} or less and move detail into its references/" >&2
+            exit 1
+          ''
+        );
+
       # Skill frontmatter gate: pi and kimi-code parse SKILL.md frontmatter
       # with JS YAML libraries that reject ': ' (colon+space) inside an
       # unquoted plain scalar and then SILENTLY skip the skill (pi reports
@@ -112,7 +127,7 @@
 
       # Both presets compose: every external source resolves and
       # mkSkills builds the linkFarm.
-      inherit (packages) base full sandbox skills-runtime;
+      inherit (packages) base full skills-runtime;
 
       # Every skill in skills/ sits in exactly one ownGroups entry, so a
       # new skill can't land unreachable from every selection.

@@ -14,7 +14,6 @@
     terraform = inputs.skills-terraform;
     google = inputs.skills-google;
     mattpocock = inputs.skills-mattpocock;
-    openshell = inputs.skills-openshell;
   };
 
   # This repo's skills/, grouped. Every skill belongs to exactly one
@@ -26,9 +25,8 @@
     kubernetes = ["envoy-gateway" "kubenix" "openebs" "rancher-kubernetes"];
     networking = ["cilium" "frr" "ifstate"];
     # Building and running the org's flakes, machines and infrastructure;
-    # opt-in per user (full and sandbox carry it through own-all).
+    # opt-in per user (full carries it through own-all).
     developer = ["clanservices" "declarative-runtime" "determinate" "disko" "flakeparts" "home-manager" "import-tree" "odoo" "terranix" "uv2nix"];
-    sandbox = ["sandbox-environment"];
   };
   own = selectSkills: [
     {
@@ -71,14 +69,6 @@
         src = sources.mattpocock;
         skillsDir = "skills/${category}";
       }) ["engineering" "productivity"];
-      # OpenShell ships skills/ and the contributor-facing .agents/skills/.
-      openshell = [
-        {src = sources.openshell;}
-        {
-          src = sources.openshell;
-          skillsDir = ".agents/skills";
-        }
-      ];
     };
 
   # External skill presets (mkSkills externalSkills lists). Among
@@ -91,8 +81,6 @@
     base = core;
     # Every own skill plus the former fleet-wide host set.
     full = own-all ++ anthropic ++ payloadcms ++ fluxcd ++ terraform ++ mattpocock;
-    # Set baked read-only at /opt/skills in the code-agent sandbox image.
-    sandbox = own-all ++ anthropic ++ cloudflare ++ payloadcms ++ supabase ++ fluxcd ++ terraform ++ google ++ openshell;
   };
 
   inherit (import ./lib/mk-skills.nix {inherit lib;}) skillSet mkSkills;

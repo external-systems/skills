@@ -9,8 +9,7 @@
 Agent skills for the external-systems fleet: the `SKILL.md` tree, the
 external skill sources, and the composed skills dir every AI coding agent
 symlinks (opencode `~/.config/opencode/skills`, pi `~/.agents/skills`,
-kimi-code `~/.kimi-code/skills`, claude-code `~/.claude/skills`, and
-`/opt/skills` in the code-agent sandbox image).
+kimi-code `~/.kimi-code/skills` and claude-code `~/.claude/skills`).
 
 ## Layout
 
@@ -49,13 +48,12 @@ devenv up        # live docs :8981 and slides :8982
 |---|---|
 | `packages.<system>.base` (`default`) | The `core` group: the small shared base every user gets |
 | `packages.<system>.full` | All of `skills/` + the former fleet-wide host set |
-| `packages.<system>.sandbox` | All of `skills/` + the set baked at `/opt/skills` in the code-agent image |
 | `packages.<system>.skills-runtime` | Tools and modules the `full` set's scripts call |
 | `lib.customSkills` | Path to this repo's `skills/` |
-| `lib.sources.<name>` | Raw external skill sources (`anthropic`, `cloudflare`, `payloadcms`, `supabase`, `fluxcd`, `terraform`, `google`, `mattpocock`, `openshell`) |
-| `lib.ownGroups` | This repo's skills by group: `core`, `developer`, `kubernetes`, `networking`, `sandbox` |
-| `lib.selections.<name>` | Ready-made `externalSkills` lists: one per own group, `own-all`, and one per source (`anthropic`, `anthropic-all`, `cloudflare`, `payloadcms`, `supabase`, `fluxcd`, `terraform`, `google`, `mattpocock`, `openshell`) |
-| `lib.externalSkills.{base,full,sandbox}` | Presets built from the selections |
+| `lib.sources.<name>` | Raw external skill sources (`anthropic`, `cloudflare`, `payloadcms`, `supabase`, `fluxcd`, `terraform`, `google`, `mattpocock`) |
+| `lib.ownGroups` | This repo's skills by group: `core`, `developer`, `kubernetes`, `networking` |
+| `lib.selections.<name>` | Ready-made `externalSkills` lists: one per own group, `own-all`, and one per source (`anthropic`, `anthropic-all`, `cloudflare`, `payloadcms`, `supabase`, `fluxcd`, `terraform`, `google`, `mattpocock`) |
+| `lib.externalSkills.{base,full}` | Presets built from the selections |
 | `lib.mkSkills` | `{pkgs, customSkills ? null, externalSkills ? []}` → linkFarm; drop-in for the AGENTS flake's `lib.mkSkills` |
 | `lib.mkSkillsTree` | `{pkgs, preset ? "base", extraSources ? []}` → preset + extra sources |
 | `lib.mkSkillsRuntime` | Same arguments plus `office ? true` → buildEnv of what that composition's scripts call; `passthru.env.NODE_PATH` |
@@ -130,8 +128,8 @@ with "nested mappings are not allowed in compact mappings" (pi) /
 "bad indentation of a mapping entry" (kimi) and the skill is **silently
 skipped** (kimi logs `Skipping invalid skill`; pi reports a skill conflict).
 `checks.skill-frontmatter` (`checks/flake-module.nix`) fails `nix flake check`
-on unparseable frontmatter, so CI catches it before hosts or the sandbox
-image pick the skill up. Names, descriptions, and titles must also avoid
+on unparseable frontmatter, so CI catches it before hosts pick the skill
+up. Names, descriptions, and titles must also avoid
 XML-like angle-bracket markup; the shared validator rejects it, and the
 `package-skills` app refuses to package invalid skills.
 
@@ -190,7 +188,10 @@ Workflow / behavior skills:
   merge order across repos. Its `references/` hold what used to be
   separate skills: `vm-tests.md` (+ `vm-tests-recipes.md`),
   `remote-builder.md`, `org-docs.md` (+ `org-docs/`) and
-  `skills-repo.md`, read only when the task needs them.
+  `skills-repo.md`, plus `secrets.md` (varlock and 1Password) and
+  `flake-standard.md`, read only when the task needs them. Its "Org
+  standards" table lists every standard in one line each;
+  `checks.router-size` keeps the SKILL.md at 10,000 characters or less.
 
 The org ground rules (clones on main, worktrees, no deploys) are not a
 skill: `rules/ground-rules.md` is exported as `lib.groundRules` and goes

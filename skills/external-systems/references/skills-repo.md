@@ -13,7 +13,7 @@ next deploy.
 ```
 external-systems/skills      skills/<name>/ + skills-* inputs
   ownGroups, selections      -> lists of {src; skillsDir; selectSkills}
-  externalSkills presets     base (= core group), full, sandbox
+  externalSkills presets     base (= core group), full
   mkSkillsTree               preset ++ extraSources -> linkFarm dir
   mkSkillsRuntime            same args -> buildEnv of script deps
         |
@@ -29,7 +29,7 @@ external-systems/home        per-user profiles set preset/extraSources
 - **Own skills** live in `skills/<name>/`. Each one belongs to exactly one
   `ownGroups` group in `flake-module.nix`: `core` (everyone),
   `developer` (building and running the org's flakes, machines and
-  infrastructure), `kubernetes`, `networking` or `sandbox`.
+  infrastructure), `kubernetes` or `networking`.
 - **External skills** come from `skills-<name>` inputs (`flake = false`),
   exposed as `lib.sources.<name>` and as ready-made `lib.selections.<name>`
   lists.
@@ -62,7 +62,10 @@ external-systems/home        per-user profiles set preset/extraSources
      (The placeholders above are for this example only.)
    - The description is the only trigger. Keep the first paragraph sharp and
      move depth into `references/*.md`, which agents load on demand.
-3. Add the name to one `ownGroups` group in `flake-module.nix`. Choose
+3. Add the name to one `ownGroups` group in `flake-module.nix`. An org
+   standard (how the org does something) is not a new skill: add a row
+   to the external-systems "Org standards" table and a
+   `references/<topic>.md` instead. Choose
    `core` only if every user should always have it.
 4. If it ships scripts, add `skills/<name>/runtime.nix`:
 
@@ -105,7 +108,7 @@ external-systems/home        per-user profiles set preset/extraSources
 4. For every picked skill that ships scripts, read the scripts and add a
    `runtime/default.nix` entry (`packages`, `python`, `node`, `office`).
    `checks.skills-runtime-coverage` enforces this for skills in `full`.
-5. Add the selection to a preset (`full` and/or `sandbox`) only if the owner
+5. Add the selection to a preset (`full`) only if the owner
    asks for it fleet-wide. Otherwise it stays a per-user pick.
 6. Verify, commit, and open the PR.
 
