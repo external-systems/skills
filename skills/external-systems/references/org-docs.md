@@ -1,8 +1,3 @@
----
-name: org-docs
-description: "The docs site and slide deck every external-systems repo has, and the org style they share: external-systems/pkgs flakeModules.docs builds a MkDocs (Material) site and a reveal.js deck from plain Markdown with zero npm, in the org look (clay on warm dark and cream), with Mermaid, emoji, speaker-view sync and hand-drawn sketch diagrams. Covers the layout, the docs.* options, writing slides and the org building blocks, overrides, previews, Pages and how the module works. Load whenever the user mentions docs, MkDocs, reveal.js, slides, a deck, a presentation, diagrams, GitHub Pages or the org style in a Nix/flake repo."
----
-
 # org-docs — docs and slides in every org repo
 
 Every org repo has a website and a slide deck, built by Nix from plain
@@ -59,8 +54,8 @@ On by default (`docs.orgStyle.enable`), for site and deck alike:
   sketch diagrams; the shared building blocks.
 
 Writing slides, the building blocks and sketch diagrams:
-[references/org-style.md](references/org-style.md). Start a deck from
-[references/starter-deck/slides.md](references/starter-deck/slides.md).
+[org-docs/org-style.md](org-docs/org-style.md). Start a deck from
+[org-docs/starter-deck/slides.md](org-docs/starter-deck/slides.md).
 
 ## Settings
 
@@ -91,7 +86,7 @@ Everything is optional; set only what differs, in any flake-parts module
 }
 ```
 
-All options and defaults: [references/options.md](references/options.md).
+All options and defaults: [org-docs/options.md](org-docs/options.md).
 Without `nav`, MkDocs builds the navigation from the files. A list
 setting (`plugins`, `markdown_extensions`, `theme.features`, `palette`)
 replaces the default list, so repeat the entries you keep. A setting
@@ -140,4 +135,4 @@ URLs are relative to the page (`use_directory_urls: false`): from
 - Load anything from a CDN in a deck or page: everything ships with the
   build, so it works offline and from `file://`.
 
-How the module builds all this: [references/under-the-hood.md](references/under-the-hood.md).
+How the module builds all this: [org-docs/under-the-hood.md](org-docs/under-the-hood.md).

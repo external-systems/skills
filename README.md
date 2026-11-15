@@ -72,7 +72,7 @@ verify the installed set after changing a selection.
 Every source lives here as an input; consumers never add `skills-*`
 inputs of their own. Each home-manager user gets the `base` preset (the
 `core` group: baton-pass, clan-core, devenv, external-systems,
-nix-style, org-docs, remote-builder, skills-repo, vm-tests) and picks extras in their profile (the agents
+nix-style) and picks extras in their profile (the agents
 module lives in external-systems/modules). List own groups before
 external sources so own skills keep winning name collisions:
 
@@ -183,14 +183,19 @@ Workflow / behavior skills:
   where the session stopped, or resume from an existing handoff.
   Language- and repo-agnostic.
 
-- `external-systems` — the org: what each repo owns, which flake
-  consumes which, the `~/external-systems/<repo>` clones, the repo
+- `external-systems` — the org router, loaded at the start of any org
+  work: what each repo owns, which flake consumes which, the
+  `~/external-systems/<repo>` clones and their worktrees, the repo
   standard (org-pkgs, flakeModules.default, devenv, CI, ruleset), PRs and
-  merge order across repos.
+  merge order across repos. Its `references/` hold what used to be
+  separate skills: `vm-tests.md` (+ `vm-tests-recipes.md`),
+  `remote-builder.md`, `org-docs.md` (+ `org-docs/`) and
+  `skills-repo.md`, read only when the task needs them.
 
-- `skills-repo` — how this repo, external-systems/modules and
-  external-systems/home ship skills: writing an own skill, importing an
-  external source, per-user picks, runtime entries, and the PR flow.
+The org ground rules (clones on main, worktrees, no deploys) are not a
+skill: `rules/ground-rules.md` is exported as `lib.groundRules` and goes
+into every agent's system prompt through external-systems/modules
+(`checks.ground-rules-size` keeps it under 2000 characters).
 
 Repo knowledge skills (deep "how things work" docs, loaded on demand by
 their description):
@@ -210,9 +215,6 @@ their description):
   generators, clan CLI, machine update flows, clanService VM tests.
 - `clanservices` — authoring clan.service modules in the official
   clan-core style.
-- `remote-builder` — using euc-hel-0 for distributed Nix builds and VM
-  tests, proving remote execution, forcing local builds, debugging SSH and
-  store failures, and testing the clanService.
 - `declarative-runtime` — NixOS service runtime state through paired
   OpenTofu providers: using and authoring pairings, readiness, secret files,
   clan vars integration, debugging, and scenario design.
@@ -225,9 +227,6 @@ their description):
   layout (inputs, flake-parts module, devenv editable venv, pkgs overlay
   packages), overrides for native libs and sdist build systems, lock
   maintenance, and a debugging table of real error messages.
-- `vm-tests` — hermetic NixOS VM tests: org-pkgs `flakeModules.vmTests`,
-  the `vm-test` runner (summary, `--quiet`, `--check`, `--serial`),
-  eval-only checks, fake secrets, pitfalls, recipes, agent loop.
 - `odoo` — the owner's Odoo test instances through
   `hostSpec.services.odoo`: configuring, using (reset, snapshots,
   Mailpit, LAN clients), changing the module and its VM tests, debugging.
@@ -256,10 +255,6 @@ their description):
   datastores, air gap, Cilium/Multus, NixOS/VM tests, k3d labs, and k3k.
 - `openebs` — OpenEBS 4.6.x Kubernetes CSI storage: engines, per-node
   prerequisites, StorageClasses, upgrades, troubleshooting.
-- `org-docs` — the docs site + slide deck every org repo gets from
-  external-systems/pkgs `flakeModules.docs`, and the org style: layout,
-  `docs.*` options, slide building blocks, sketch diagrams, Mermaid,
-  overrides, how the module works.
 - `kubenix` — render Kubernetes manifests with the Nix module system
   (hall/kubenix): typed resources, helm chart inflation, Nix-built OCI
   images + skopeo push, CRDs/typed custom resources, secrets via

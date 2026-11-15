@@ -20,7 +20,9 @@
   # This repo's skills/, grouped. Every skill belongs to exactly one
   # group (checks.own-skills-grouped); core is the shared base.
   ownGroups = {
-    core = ["baton-pass" "clan-core" "devenv" "external-systems" "nix-style" "org-docs" "remote-builder" "skills-repo" "vm-tests"];
+    # external-systems is the org router: vm-tests, remote-builder,
+    # org-docs and skills-repo are its references/.
+    core = ["baton-pass" "clan-core" "devenv" "external-systems" "nix-style"];
     kubernetes = ["envoy-gateway" "kubenix" "openebs" "rancher-kubernetes"];
     networking = ["cilium" "frr" "ifstate"];
     # Building and running the org's flakes, machines and infrastructure;
@@ -122,6 +124,11 @@
 in {
   flake.lib = {
     customSkills = ./skills;
+    # The org ground rules, for every agent's system prompt (modules
+    # homeModules.agents appends them; checks.ground-rules-size caps
+    # them).
+    groundRulesFile = ./rules/ground-rules.md;
+    groundRules = builtins.readFile ./rules/ground-rules.md;
     inherit ownGroups sources selections externalSkills skillSet mkSkills mkSkillsTree mkSkillsRuntime;
   };
 

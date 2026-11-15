@@ -1,8 +1,3 @@
----
-name: skills-repo
-description: "How the owner's agent skills are built and shipped: the external-systems/skills flake (own skills, ownGroups, external sources, selections, presets, the skills runtime) and how external-systems/modules and external-systems/home install them per home-manager user. Load when asked to add, write, import, or enable a skill, to add skills from another GitHub repo, to give a user (netsa, matt, ...) more or fewer skills, or when an agent's skill is missing; then follow the procedure and open a PR."
----
-
 # skills-repo
 
 The owner keeps every agent skill in **external-systems/skills**. When

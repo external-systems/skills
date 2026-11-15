@@ -1,8 +1,3 @@
----
-name: vm-tests
-description: "Hermetic NixOS VM tests in external-systems org repos: org-pkgs flakeModules.vmTests (vm-tests/*.nix auto-discovered into legacyPackages.SYSTEM.vmTests, never checks), the vm-test runner (--list, NAME, --all/--serial, --check, --remote on euc-hel-0, parallel --all within a vCPU/memory budget with failures rerun alone, fresh --rebuild runs and CACHED results, --quiet and the run summary, --driver/--keep-state/--interactive), vmTests.* options, eval-only checks and resource caps, hermetic fake secrets for clan-vars modules, clan tests vs plain tests, pitfalls that cost a run, recipes (offline ACME, browser trust, LAN clients, config changes), debugging, and the agent loop. Load when creating, running, or debugging a VM test."
----
-
 # vm-tests
 
 NixOS integration tests: QEMU VMs booted by the NixOS test driver. Every
@@ -22,8 +17,8 @@ there.
   `checks.vm-tests-no-kvm-checks` fails if any check needs KVM.
 - **Manual only:** a person or agent runs `vm-test` on a local KVM machine
   or offloads it to the remote builder (euc-hel-0: x86_64 + aarch64,
-  features `kvm nixos-test big-parallel`, 16 jobs; see the
-  `remote-builder` skill).
+  features `kvm nixos-test big-parallel`, 16 jobs; see
+  [remote-builder.md](remote-builder.md)).
 - **Hermetic.** No network inside the VMs, nothing downloaded at boot,
   everything asserted is in the Nix closure, no host state. Never
   `--no-sandbox`, `sandbox = false` or `__noChroot`. A test that exists to
@@ -310,7 +305,7 @@ Each of these failed a 10-15 minute remote run in practice.
 
 Longer patterns (an offline ACME server, proving a browser trusts a
 certificate, a LAN client that edits its hosts file, testing a config
-change with a specialisation): [references/recipes.md](references/recipes.md).
+change with a specialisation): [vm-tests-recipes.md](vm-tests-recipes.md).
 
 ## Patterns and anti-patterns
 
