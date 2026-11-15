@@ -17,7 +17,7 @@ snippets explain what the template contains.
 | Piece | Gives |
 |---|---|
 | `inputs.org-pkgs.flakeModules.treefmt` | org linters: `formatter`, `checks.treefmt` |
-| `inputs.org-pkgs.flakeModules.docs` | MkDocs site + reveal.js deck: `packages.documentation`, `packages.slides`, `apps.watch-documentation`, `apps.serve-slides` (the `org-docs` skill) |
+| `inputs.org-pkgs.flakeModules.docs` | MkDocs site + reveal.js deck: `packages.documentation`, `packages.slides`, `apps.watch-documentation`, `apps.serve-slides` ([org-docs.md](org-docs.md)) |
 | `inputs.org-pkgs.flakeModules.python` | Python repos (`pyproject.toml` + `uv.lock` at the root, switches itself on): uv2nix packages versioned `<major>.<minor>.<commits>`, apps, `checks.python-{pytest,ty,uv-lock,version}`, ruff in treefmt, `vmTests.python-cli` (the `uv2nix` skill) |
 | `inputs.org-pkgs.flakeModules.default` | treefmt + docs + vmTests + python, `checks.lock-sync`, `apps.sync-locks`, `documentation`/`slides` as checks |
 | `org-pkgs/devenv` (devenv.yaml `imports`) | the org shell: `fmt`, `check`, `sync-locks`, `docs-build`, `docs`, `slides` scripts; `devenv up` serves docs :8981 and slides :8982; `devenv test` gates |
@@ -148,7 +148,7 @@ _: {
   perSystem.docs = {
     repo = "<repo>"; # site_url https://<repo>.external.systems/, repo + edit links
     settings.site_name = "external-systems <repo>";
-    # settings.nav = [...];  slides.title = "...";  (org-docs skill)
+    # settings.nav = [...];  slides.title = "...";  (org-docs.md)
   };
 }
 ```
@@ -163,7 +163,7 @@ disk, for example `firefox result/index.html`. No server process runs.
 `devenv up` (live reload on :8981, slides on :8982) is for heavy editing
 sessions.
 
-The org style, deck format, embedding and GitHub Pages: the `org-docs` skill.
+The org style, deck format, embedding and GitHub Pages: [org-docs.md](org-docs.md).
 
 ## nixd settings
 

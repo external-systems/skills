@@ -1076,7 +1076,7 @@ testing the home repo's own modules through its VM-test harness. The test
 file imports the repo's
 `nixosModules.default` (not the clan machinery) and flips the `hostSpec.*`
 options the service's `perInstance`/`perMachine` modules would set — see
-the `vm-tests` skill for the full hermeticity rule, the `vm-test` runner
+the external-systems skill's `references/vm-tests.md` for the full hermeticity rule, the `vm-test` runner
 and the agent loop. The clan-specific additions:
 
 - Import `inputs.clan-core.nixosModules.clanCore` and set minimal

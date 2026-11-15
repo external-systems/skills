@@ -19,7 +19,8 @@ external-systems/home        per-user profiles pick their skills
 4. `check-skills`, `fmt`, `check`, then open a PR.
 
 Changes reach machines after `nix flake update skills` in the consumer and
-a human-run deploy. The `skills-repo` skill has the full procedure.
+a human-run deploy. The external-systems skill's `references/skills-repo.md` has the full
+procedure.
 
 ## claude.ai account skills
 

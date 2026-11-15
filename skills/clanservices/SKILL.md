@@ -9,7 +9,7 @@ Deep-research skill for writing clanServices that match the official
 `clan-core` and `clan-community` conventions closely enough to upstream.
 Scope: authoring only — operating clan (inventory usage, CLI, vars
 workflow, deployment, data-mesher) is the `clan-core` skill, and the repo
-VM-test harness is the `vm-tests` skill.
+VM-test harness is the external-systems skill's `references/vm-tests.md`.
 
 Sources of truth (cloned at `~/clan-core`, `~/clan-community`):
 
@@ -827,7 +827,7 @@ and org CI has no KVM. external-systems/clanServices registers suites in
 a top-level `clanTests.<suite>` option; `flake-parts/clan-tests.nix`
 wraps each in clan-core's `clanTest` and hands it to org-pkgs
 `vmTests.tests`, so suites land in `legacyPackages.<system>.vmTests`
-and run with `vm-test` (the `vm-tests` skill):
+and run with `vm-test` (the external-systems skill's `references/vm-tests.md`):
 
 ```nix
 # services/<name>/flake-module.nix (top level, not perSystem)

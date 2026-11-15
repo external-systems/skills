@@ -129,7 +129,7 @@ at most 4 times in 15 min) and are capped by `MemoryMax`.
 ## Changing the module
 
 Work in external-systems/modules on a branch (its `AGENTS.md`; skills
-`nix-style`, `external-systems`, `vm-tests`). Keep the shell scripts in
+`nix-style` and `external-systems`, with its `references/vm-tests.md`). Keep the shell scripts in
 `_odoo/*.sh` (lib.sh first, built by `mkScript`; shellcheck runs on
 each fragment through treefmt and on the whole script at build). New
 behaviour gets a subtest in the VM test that owns it:

@@ -378,7 +378,7 @@ Key patterns from the tests:
 
 ### This repo's VM-test conventions
 
-From the [`vm-tests`](../../vm-tests/SKILL.md) skill (org-pkgs
+From the external-systems skill ([`references/vm-tests.md`](../../external-systems/references/vm-tests.md)) (org-pkgs
 `flakeModules.vmTests`):
 
 * Test files live in `vm-tests/*.nix`; each is a `nixosLib.runTest` module

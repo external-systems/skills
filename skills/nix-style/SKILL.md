@@ -1,6 +1,6 @@
 ---
 name: nix-style
-description: "How Nix code is written (user preferences): attribute nesting, key quoting, inherit and enable rules, module-system conventions, repo-root paths, flake-parts module file names, formatting and linting with treefmt (alejandra, deadnix, statix, nixf-diagnose, the nixd editor diagnostics), the mandatory fmt/check/build tool loop, working inside the dev shell, and the agent contract for editing a flake. Use when writing or editing any .nix file. How an org repo is laid out (inputs, CI, rulesets, PRs) is the external-systems skill; docs and slides are the org-docs skill."
+description: "How Nix code is written (user preferences): attribute nesting, key quoting, inherit and enable rules, module-system conventions, repo-root paths, flake-parts module file names, formatting and linting with treefmt (alejandra, deadnix, statix, nixf-diagnose, the nixd editor diagnostics), the mandatory fmt/check/build tool loop, working inside the dev shell, and the agent contract for editing a flake. Use when writing or editing any .nix file. How an org repo is laid out (inputs, CI, rulesets, PRs) is the external-systems skill; docs and slides are the external-systems skill's references/org-docs.md."
 ---
 
 # nix-style — Nix code style and tool loop
@@ -13,7 +13,7 @@ org's. Repo-specific facts live in each repo's `AGENTS.md`.
 This skill is only about the code. How an org repo is put together (the
 one `org-pkgs` input, `flakeModules.default`, devenv, nixd settings, CI,
 rulesets, PRs) is the `external-systems` skill; the docs site and slide
-deck are the `org-docs` skill.
+deck are the external-systems skill's `references/org-docs.md`.
 
 ## Non-negotiables (flake repos)
 

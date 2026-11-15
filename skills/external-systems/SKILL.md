@@ -1,21 +1,38 @@
 ---
 name: external-systems
-description: "The owner's external-systems GitHub org: which core repo owns what (pkgs, skills, modules, not-secrets, secrets, home, clanServices), where clones live, which repo a change belongs in, and how every repo is built and changed: the one org-pkgs input and flakeModules.default, the devenv shell, nixd settings, lock sync, AGENTS.md, badges, the org CI (ci.yml calling pkgs org-ci.yml, Pages, releases), the branch ruleset, commits and pull requests, and the merge order across repos. Load before working in any org repo: creating or converging one, editing flake.nix wiring, devenv.yaml, .vscode, CI, rulesets or Pages, deciding where a package, module, skill, value or clan service goes, or opening, describing or sequencing PRs."
+description: "The owner's external-systems GitHub org and how work happens in it: which repo owns what (pkgs, skills, modules, not-secrets, secrets, home, clanServices) and where a change goes; flake wiring, devenv, CI, rulesets, worktrees, commits, PRs and merge order; plus references for NixOS VM tests (vm-test), the euc-hel-0 remote builder, the docs site and slide deck (MkDocs, reveal.js, Pages), and adding or enabling agent skills. Load at the start of any work in an org repo or ~/external-systems, and whenever VM tests, remote builds, docs, slides or skills come up."
 ---
 
 # external-systems — the org's repos
 
 The owner's Nix setup is split across flakes in the **external-systems**
 GitHub org. Each repo has one job, every repo has the same shape and CI,
-and every change goes through a PR. Code style is the `nix-style` skill;
-the docs site, deck and org look are the `org-docs` skill. Repo-specific
-facts live in each repo's `AGENTS.md`: read it before editing there.
+and every change goes through a PR. The ground rules (clones on main,
+worktrees, no deploys) are in your system prompt; if they are missing,
+read `rules/ground-rules.md` in external-systems/skills
+(`~/external-systems/skills`). Code style is the
+`nix-style` skill. Repo-specific facts live in each repo's `AGENTS.md`:
+read it before editing there.
+
+## References
+
+Read the one the task needs; each is self-contained.
+
+| Task | Read |
+|---|---|
+| Write, run or debug a NixOS VM test (`vm-test`, `vmTests.*`, hermetic secrets) | [references/vm-tests.md](references/vm-tests.md), recipes in [references/vm-tests-recipes.md](references/vm-tests-recipes.md) |
+| Build on, prove or debug the euc-hel-0 remote builder | [references/remote-builder.md](references/remote-builder.md) |
+| Docs site, slide deck, org style, GitHub Pages | [references/org-docs.md](references/org-docs.md) (its details in `references/org-docs/`) |
+| Add, import or enable a skill; give a user skills | [references/skills-repo.md](references/skills-repo.md) |
+| Create a repo or change its wiring, devenv, `.vscode`, CI, ruleset or Pages | [references/flake-standard.md](references/flake-standard.md) |
 
 ## The repos
 
 Clones live in `~/external-systems/<repo>`, named exactly like the
-GitHub repo (capital S in `clanServices`); look there before cloning. In
-a cloud session check the working directory first.
+GitHub repo (capital S in `clanServices`); look there before cloning.
+They stay on `main`; branches live in worktrees under
+`~/external-systems/.worktrees/<repo>/<branch>`. In a cloud session
+check the working directory first.
 
 ```
                     pkgs  (input name: org-pkgs)
@@ -39,7 +56,7 @@ machines.
 | Repo | Owns | Never holds |
 |---|---|---|
 | **pkgs** | The single nixpkgs, flake-parts and import-tree every repo follows. Packages and `overlays.{default,kubernetes,ifstate,tools}`, the code-agent image, `flakeModules.default` (also `.treefmt`, `.docs`, `.vmTests`, `.python`), the org devenv shell (`org-pkgs/devenv`, `org-pkgs/devenv/python`), the repo template, `org-ci.yml`. | Inventory, clan vars, fleet policy |
-| **skills** | Every agent skill (`skills/`), external sources as `skills-*` inputs, presets, `mkSkillsTree`, `mkSkillsRuntime`, the skill checks and apps. See the `skills-repo` skill. | Secrets, IPs, hostnames |
+| **skills** | Every agent skill (`skills/`), external sources as `skills-*` inputs, presets, `mkSkillsTree`, `mkSkillsRuntime`, the skill checks and apps. See [references/skills-repo.md](references/skills-repo.md). | Secrets, IPs, hostnames |
 | **modules** | Reusable NixOS (`nixosModules.*`, `hostSpec.*`) and home-manager (`homeModules.*`, `homeSpec.*`) modules, all off until enabled. `homeModules.agents` installs the skills tree. | Machines, users, packages, IPs, account ids |
 | **not-secrets** | The values schema, `lib`, `flakeModules.{values,checks}`, public placeholder values (RFC 5737/3849/7042/2606 ranges only). | Any real value (`checks.placeholders-only`) |
 | **secrets** | Private. Only `values/`: real addresses, interfaces, MACs, deploy targets, storage box ids. Same outputs as not-secrets; `checks.shape-parity`. | Credentials (those are clan vars) |
@@ -87,7 +104,7 @@ repos start from `nix flake init -t github:external-systems/pkgs`.
 
 - **A flake with docs and a deck.** `nix build .#<attr>` is the build
   interface; `documentation/docs/*.md` is the site,
-  `documentation/slides/slides.md` the deck (`org-docs`).
+  `documentation/slides/slides.md` the deck ([references/org-docs.md](references/org-docs.md)).
 - **One org input.** `org-pkgs.url = "github:external-systems/pkgs"`;
   `nixpkgs`, `flake-parts` and `import-tree` follow `org-pkgs/*`, and
   every other input follows those where it can. Never name it `pkgs`
@@ -156,8 +173,8 @@ than doing it unasked.
 
 ## Changing a repo
 
-- **Never push to `main`.** Every change is a branch and a PR in the
-  repo that owns it. One concern per PR, one PR per repo.
+- **Never push to `main`.** Every change is a branch in its own
+  worktree (the ground rules) and a PR in the repo that owns it. One concern per PR, one PR per repo.
 - **Before pushing:** `git add -A` (Nix only sees tracked files),
   `fmt`, `check`, and build what you touched. `check` is
   `nix run .#flake-check`: it fails on dangerous evaluation warnings

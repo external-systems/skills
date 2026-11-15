@@ -1,8 +1,3 @@
----
-name: remote-builder
-description: "Use, test, and debug the external-systems org's euc-hel-0 Nix remote builder: normal distributed package builds, proving real remote compilation, forcing local builds, NixOS VM tests, SSH/store diagnostics, and clanService eval tests. Load whenever building Nix packages or machine closures, offloading VM tests, or troubleshooting remote builds in this org."
----
-
 # remote-builder
 
 Use euc-hel-0 through the Nix daemon's configured distributed builders.
@@ -89,7 +84,7 @@ combination can fail instead of dispatching the rebuild.
 ## NixOS VM tests and large builds
 
 Use the repository's `vm-test` runner (org-pkgs `flakeModules.vmTests`;
-the `vm-tests` skill) or build its test derivation.
+[vm-tests.md](vm-tests.md)) or build its test derivation.
 The remote builder's `kvm` and `nixos-test` features satisfy the usual
 NixOS VM-test requirements, and `big-parallel` suits large derivations.
 Nix routes derivations by system and required features; a feature the

@@ -91,4 +91,4 @@ Material for MkDocs Markdown, with the org extensions on:
 - Attributes on elements: `{ .class }` (attr_list), Markdown inside HTML
   with `markdown`.
 
-A page shows the deck with an iframe (`slides/index.html`, see SKILL.md).
+A page shows the deck with an iframe (`slides/index.html`, see ../org-docs.md).
