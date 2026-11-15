@@ -164,7 +164,7 @@ test's own directory.
   fallback.
 - Driver mode always runs VMs on the invoking machine and needs
   `/dev/kvm` there. Only sandboxed builds can go remote.
-- Never run VM tests inside the OpenShell code-agent sandbox (no KVM). Use
+- Never run VM tests inside a container or VM without `/dev/kvm`. Use
   `--remote` from a machine that has the builder configured, or hand the
   command to the owner.
 

@@ -1,6 +1,6 @@
 ---
 name: external-systems
-description: "The owner's external-systems GitHub org and how work happens in it: which repo owns what (pkgs, skills, modules, not-secrets, secrets, home, clanServices) and where a change goes; flake wiring, devenv, CI, rulesets, worktrees, commits, PRs and merge order; plus references for NixOS VM tests (vm-test), the euc-hel-0 remote builder, the docs site and slide deck (MkDocs, reveal.js, Pages), and adding or enabling agent skills. Load at the start of any work in an org repo or ~/external-systems, and whenever VM tests, remote builds, docs, slides or skills come up."
+description: "The external-systems GitHub org and its standards: which repo owns what and where a change goes, flake and devenv wiring, CI, rulesets, worktrees, PRs and merge order, plus references for secrets (varlock and 1Password), NixOS VM tests, the euc-hel-0 remote builder, docs and slides, and agent skills. Load at the start of any work in an org repo or ~/external-systems, and whenever secrets, .env files, VM tests, remote builds, docs, slides or skills come up."
 ---
 
 # external-systems — the org's repos
@@ -13,18 +13,6 @@ read `rules/ground-rules.md` in external-systems/skills
 (`~/external-systems/skills`). Code style is the
 `nix-style` skill. Repo-specific facts live in each repo's `AGENTS.md`:
 read it before editing there.
-
-## References
-
-Read the one the task needs; each is self-contained.
-
-| Task | Read |
-|---|---|
-| Write, run or debug a NixOS VM test (`vm-test`, `vmTests.*`, hermetic secrets) | [references/vm-tests.md](references/vm-tests.md), recipes in [references/vm-tests-recipes.md](references/vm-tests-recipes.md) |
-| Build on, prove or debug the euc-hel-0 remote builder | [references/remote-builder.md](references/remote-builder.md) |
-| Docs site, slide deck, org style, GitHub Pages | [references/org-docs.md](references/org-docs.md) (its details in `references/org-docs/`) |
-| Add, import or enable a skill; give a user skills | [references/skills-repo.md](references/skills-repo.md) |
-| Create a repo or change its wiring, devenv, `.vscode`, CI, ruleset or Pages | [references/flake-standard.md](references/flake-standard.md) |
 
 ## The repos
 
@@ -55,7 +43,7 @@ machines.
 
 | Repo | Owns | Never holds |
 |---|---|---|
-| **pkgs** | The single nixpkgs, flake-parts and import-tree every repo follows. Packages and `overlays.{default,kubernetes,ifstate,tools}`, the code-agent image, `flakeModules.default` (also `.treefmt`, `.docs`, `.vmTests`, `.python`), the org devenv shell (`org-pkgs/devenv`, `org-pkgs/devenv/python`), the repo template, `org-ci.yml`. | Inventory, clan vars, fleet policy |
+| **pkgs** | The single nixpkgs, flake-parts and import-tree every repo follows. Packages and `overlays.{default,kubernetes,ifstate,tools}`, `flakeModules.default` (also `.treefmt`, `.docs`, `.vmTests`, `.python`), the org devenv shell (`org-pkgs/devenv`, `org-pkgs/devenv/python`), the repo template, `org-ci.yml`. | Inventory, clan vars, fleet policy |
 | **skills** | Every agent skill (`skills/`), external sources as `skills-*` inputs, presets, `mkSkillsTree`, `mkSkillsRuntime`, the skill checks and apps. See [references/skills-repo.md](references/skills-repo.md). | Secrets, IPs, hostnames |
 | **modules** | Reusable NixOS (`nixosModules.*`, `hostSpec.*`) and home-manager (`homeModules.*`, `homeSpec.*`) modules, all off until enabled. `homeModules.agents` installs the skills tree. | Machines, users, packages, IPs, account ids |
 | **not-secrets** | The values schema, `lib`, `flakeModules.{values,checks}`, public placeholder values (RFC 5737/3849/7042/2606 ranges only). | Any real value (`checks.placeholders-only`) |
@@ -72,14 +60,11 @@ How the links work:
 - **Values:** a consumer reads `inputs.secrets.values.hosts.<machine>...`
   and never writes an address, interface or deploy target as a literal.
   home pins the private secrets repo (evaluating machines needs a token
-  that can read it; the devenv shell sets it from `.env`). Public
+  that can read it; the devenv shell sets it from `GH_TOKEN` or `gh auth token`). Public
   consumers pin not-secrets under the same input name.
 - **Skills reach machines through modules:** `homeModules.agents` calls
   `inputs.skills.lib.mkSkillsTree` with each user's
   `homeSpec.agents.skills.{preset,extraSources}`.
-- **clanServices** is added with `clanServices.inputs.org-pkgs.follows
-  = "org-pkgs"` and `clanServices.inputs.clan-core.follows = "clan-core"`,
-  and referenced as `module.input = "clanServices"`.
 
 ## Where a change goes
 
@@ -94,82 +79,27 @@ How the links work:
 | A clan service for more than one fleet | clanServices |
 | A machine, a user profile, an inventory instance, a user's skills | home |
 
-## Every repo
+## Org standards
 
-Templates for every file, CI and ruleset details and the new-repo
-procedure: [references/flake-standard.md](references/flake-standard.md).
-Load it before creating a repo or changing a repo's wiring,
-`devenv.yaml`, `.vscode/`, `documentation/`, CI, ruleset or Pages. New
-repos start from `nix flake init -t github:external-systems/pkgs`.
+Read the linked file or skill when a task touches the standard.
 
-- **A flake with docs and a deck.** `nix build .#<attr>` is the build
-  interface; `documentation/docs/*.md` is the site,
-  `documentation/slides/slides.md` the deck ([references/org-docs.md](references/org-docs.md)).
-- **One org input.** `org-pkgs.url = "github:external-systems/pkgs"`;
-  `nixpkgs`, `flake-parts` and `import-tree` follow `org-pkgs/*`, and
-  every other input follows those where it can. Never name it `pkgs`
-  (the nixpkgs package set). One
-  nixpkgs for the org: no second nixpkgs, no `pkgs.unstable`.
-- **Imports `inputs.org-pkgs.flakeModules.default`**: treefmt (formatter,
-  `checks.treefmt`), docs and slides as checks, VM tests,
-  `checks.lock-sync`, `apps.sync-locks`, and Python (uv2nix, ruff, ty)
-  when `pyproject.toml` + `uv.lock` exist. Never copy them into a repo; a
-  missing feature is a pkgs PR.
-- **Python repos** add no input: a uv workspace at the root, `org-pkgs/devenv/python`
-  in `devenv.yaml`, `pyproject.toml` version `<major>.<minor>.0` matching
-  ci.yml (Nix stamps the commit count). Consumers take a Python repo as
-  `git+https://…?ref=main` for its exact version. The `uv2nix` skill.
-- **No dev partition**, no `dev/flake.nix`: every dev tool comes from
-  org-pkgs. Repo checks and apps are ordinary modules (`flake-parts/`,
-  `tests/flake-module.nix`). Only pkgs keeps one (its code-agent image
-  needs modules). A heavy test-only input needs the owner's yes.
-- **The devenv CLI shell.** `devenv.yaml` takes `org-pkgs`, follows
-  `org-pkgs/nixpkgs`, imports `org-pkgs/devenv` (scripts `fmt`, `check`,
-  `sync-locks`, `docs-build`, `docs`, `slides`; `devenv up` serves docs
-  on :8981, slides on :8982). `devenv.nix` adds the repo's own tools. No
-  flake `devShells`.
-- **`.vscode/settings.json`** points nixd at the workspace flake
-  (`builtins.getFlake (builtins.toString ./.)`) and nixpkgs with the org
-  overlay, with `debug = true;` in `mkFlake`.
-- **One nixpkgs in `flake.lock` and `devenv.lock`.** After
-  `nix flake update org-pkgs`, run `sync-locks` in the same commit; never
-  move nixpkgs with a bare `devenv update`.
-- **The badge row** (ci, release, docs, license, built with Nix) under
-  the title of `README.md` and `documentation/docs/index.md`, as in the
-  template, minus badges the repo has no source for. Private repos get
-  none: shields.io cannot see them.
-- **`AGENTS.md`** (what the repo is, Layout, Build and check or Tool
-  loop, Rules) and `CLAUDE.md` containing `@AGENTS.md`, kept in step
-  with the code in the same PR.
-- **No build output committed**: `result*`, `_site/`, `site/`,
-  `documentation/site/`, `.devenv*` are gitignored; CI is the only
-  publisher; no `gh-pages`.
-- **Public unless it holds secrets.** No secret, IP, account,
-  subscription or tenant id in any public file, commit or PR.
+| Standard | The rule | Detail |
+|---|---|---|
+| Repo shape | One `org-pkgs` input, `flakeModules.default`, devenv shell, org CI, ruleset, docs, `AGENTS.md` | [references/flake-standard.md](references/flake-standard.md) |
+| Secrets | Tooling secrets live in 1Password and load through varlock (`.env.schema` committed, no `.env` values); machine secrets are clan vars | [references/secrets.md](references/secrets.md) |
+| Git and PRs | Clones on `main`, one worktree per branch, squash PRs, upstream merges first | the ground rules, "Changing a repo" and "Merge order" below |
+| Nix code | treefmt (alejandra, deadnix, statix, nixf-diagnose), nesting and quoting rules, `fmt` then `check` | the `nix-style` skill |
+| Docs and slides | Plain Markdown in `documentation/`, built by `flakeModules.docs`, published to Pages by CI | [references/org-docs.md](references/org-docs.md) |
+| VM tests | `vm-tests/*.nix`, never in `checks` or CI, run with `vm-test` on KVM or `--remote` | [references/vm-tests.md](references/vm-tests.md), [references/vm-tests-recipes.md](references/vm-tests-recipes.md) |
+| Builds | euc-hel-0 takes builds automatically; never weaken its SSH | [references/remote-builder.md](references/remote-builder.md) |
+| Python | uv workspace, `flakeModules.python`, ruff and ty | the `uv2nix` skill |
+| Agent skills | Every skill in external-systems/skills, picked per user in home | [references/skills-repo.md](references/skills-repo.md) |
+| Clan fleet | Machines, inventory and vars only in home; vars generated on a branch | home's `AGENTS.md`, the `clan-core` skill |
 
-A repo that does not match is converged in its own PR; offer it rather
-than doing it unasked.
-
-## CI and ruleset
-
-- **One CI:** `.github/workflows/ci.yml`, copied exactly from the pkgs
-  template, calls pkgs `org-ci.yml`. One job, id `ci`, so the required
-  check is **`ci / flake-check`** everywhere. Per repo only the `with:`
-  keys change: `major`, `minor`, `private-repos`, `pages`.
-- `flake-check` runs `nix flake check` on PRs, the merge queue and
-  `main`. On `main`, `deploy` publishes `.#documentation` to Pages
-  (`<repo>.external.systems`) and `release` tags
-  `<major>.<minor>.<git rev-list --count HEAD>`.
-- **Change CI only in pkgs.** Never add steps, jobs or workflows in a
-  repo; never `pull_request_target`. Pages: Settings → Pages → Source:
-  GitHub Actions, once.
-- **Ruleset** `.github/rulesets/default.json` (from the template): PRs
-  only, squash only, linear history, signed commits, no force-push or
-  deletion, `ci / flake-check` required on an up-to-date branch. GitHub
-  does not read the file: apply it with `gh api` (the reference). GitHub
-  Free: no org rulesets, no rulesets or Pages on private repos.
-  `pages: false` under `with:` keeps a repo's docs unpublished
-  (secrets).
+A new org standard is one row here plus `references/<topic>.md`; a
+whole technology with its own trigger words is its own skill instead.
+This file stays a router: `checks.router-size` keeps it under 10,000
+characters.
 
 ## Changing a repo
 
@@ -186,7 +116,8 @@ than doing it unasked.
   `secrets` repo the token cannot read a PR's `statusCheckRollup`; read
   CI with `gh run list -b <branch> --json status,conclusion`.
 - **Private inputs outside devenv** (home evaluating `secrets`): Nix gets
-  a 404 without a token. The devenv shell sets it from `.env`; for one
+  a 404 without a token. The devenv shell sets it from `GH_TOKEN` or
+  `gh auth token`; for one
   command, `NIX_CONFIG="access-tokens = github.com=$(gh auth token)"`.
 - **Commits:** imperative subject naming the change, body says why. The
   PR is squash-merged and its title becomes the commit on `main`: make
@@ -196,7 +127,9 @@ than doing it unasked.
   the reviewer must know: behaviour or URL changes, lock-size changes,
   merge order, monthly cost for infrastructure.
 - **Agents never merge, approve, bypass or deploy** (`clan machines
-  update`, `nixos-rebuild`): report the command for the owner.
+  update`, `nixos-rebuild`): report the command for the owner. The one
+  exception: the owner explicitly allows merging (or auto-merge) for a
+  named repo in the session; it never covers deploys.
 - **A repo with its own gates** (infrastructure plans and applies) says
   so in its `AGENTS.md`; those gates come on top of these rules.
 

@@ -16,7 +16,7 @@ of the tools the skills' scripts call.
 | `lib.mkSkillsTree` | compose a preset plus extra sources into one skills dir |
 | `lib.mkSkillsRuntime` | the tools those skills' scripts need |
 | `lib.selections.*` | ready-made source lists users pick from |
-| `packages.base` / `full` / `sandbox` | the three presets, prebuilt |
+| `packages.base` / `full` | the two presets, prebuilt |
 
 The repository README lists every current skill.
 

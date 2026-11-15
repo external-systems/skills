@@ -12,6 +12,88 @@ The canonical source is `nix flake init -t github:external-systems/pkgs`
 (pkgs `templates/default`). Prefer it over copying the snippets below; the
 snippets explain what the template contains.
 
+## The standard at a glance
+
+The sections after this one hold the templates and procedures.
+
+- **A flake with docs and a deck.** `nix build .#<attr>` is the build
+  interface; `documentation/docs/*.md` is the site,
+  `documentation/slides/slides.md` the deck ([org-docs.md](org-docs.md)).
+- **One org input.** `org-pkgs.url = "github:external-systems/pkgs"`;
+  `nixpkgs`, `flake-parts` and `import-tree` follow `org-pkgs/*`, and
+  every other input follows those where it can. Never name it `pkgs`
+  (the nixpkgs package set). One
+  nixpkgs for the org: no second nixpkgs, no `pkgs.unstable`.
+- **Imports `inputs.org-pkgs.flakeModules.default`**: treefmt (formatter,
+  `checks.treefmt`), docs and slides as checks, VM tests,
+  `checks.lock-sync`, `apps.sync-locks`, and Python (uv2nix, ruff, ty)
+  when `pyproject.toml` + `uv.lock` exist. Never copy them into a repo; a
+  missing feature is a pkgs PR.
+- **Python repos** add no input: a uv workspace at the root, `org-pkgs/devenv/python`
+  in `devenv.yaml`, `pyproject.toml` version `<major>.<minor>.0` matching
+  ci.yml (Nix stamps the commit count). Consumers take a Python repo as
+  `git+https://…?ref=main` for its exact version. The `uv2nix` skill.
+- **No dev partition**, no `dev/flake.nix`: every dev tool comes from
+  org-pkgs. Repo checks and apps are ordinary modules (`flake-parts/`,
+  `tests/flake-module.nix`). A heavy test-only input needs the owner's
+  yes.
+- **The devenv CLI shell.** `devenv.yaml` takes `org-pkgs`, follows
+  `org-pkgs/nixpkgs`, imports `org-pkgs/devenv` (scripts `fmt`, `check`,
+  `sync-locks`, `docs-build`, `docs`, `slides`; `devenv up` serves docs
+  on :8981, slides on :8982). `devenv.nix` adds the repo's own tools. No
+  flake `devShells`.
+- **`.vscode/settings.json`** points nixd at the workspace flake
+  (`builtins.getFlake (builtins.toString ./.)`) and nixpkgs with the org
+  overlay, with `debug = true;` in `mkFlake`.
+- **One nixpkgs in `flake.lock` and `devenv.lock`.** After
+  `nix flake update org-pkgs`, run `sync-locks` in the same commit; never
+  move nixpkgs with a bare `devenv update`.
+- **The badge row** (ci, release, docs, license, built with Nix) under
+  the title of `README.md` and `documentation/docs/index.md`, as in the
+  template, minus badges the repo has no source for. Private repos get
+  none: shields.io cannot see them.
+- **`AGENTS.md`** (what the repo is, Layout, Build and check or Tool
+  loop, Rules) and `CLAUDE.md` containing `@AGENTS.md`, kept in step
+  with the code in the same PR.
+- **No build output committed**: `result*`, `_site/`, `site/`,
+  `documentation/site/`, `.devenv*` are gitignored; CI is the only
+  publisher; no `gh-pages`.
+- **Public unless it holds secrets.** No secret, IP, account,
+  subscription or tenant id in any public file, commit or PR. Secrets a
+  repo's tooling needs come from 1Password through varlock
+  ([secrets.md](secrets.md)).
+
+A repo that does not match is converged in its own PR; offer it rather
+than doing it unasked.
+
+### CI and ruleset
+
+- **One CI:** `.github/workflows/ci.yml`, copied exactly from the pkgs
+  template, calls pkgs `org-ci.yml`. One job, id `ci`, so the required
+  check is **`ci / flake-check`** everywhere. Per repo only the `with:`
+  keys change: `major`, `minor`, `private-repos`, `pages`.
+- `flake-check` runs `nix flake check` on PRs, the merge queue and
+  `main`. On `main`, `deploy` publishes `.#documentation` to Pages
+  (`<repo>.external.systems`) and `release` tags
+  `<major>.<minor>.<git rev-list --count HEAD>`.
+- **Change CI only in pkgs.** Never add steps, jobs or workflows in a
+  repo; never `pull_request_target`. Pages: Settings → Pages → Source:
+  GitHub Actions, once.
+- **Ruleset** `.github/rulesets/default.json` (from the template): PRs
+  only, squash only, linear history, signed commits, no force-push or
+  deletion, `ci / flake-check` required on an up-to-date branch. GitHub
+  does not read the file: apply it with `gh api` (below). GitHub
+  Free: no org rulesets, no rulesets or Pages on private repos.
+  `pages: false` under `with:` keeps a repo's docs unpublished
+  (secrets).
+
+## Consuming clanServices
+
+A clan repo adds external-systems/clanServices with
+`clanServices.inputs.org-pkgs.follows = "org-pkgs"` and
+`clanServices.inputs.clan-core.follows = "clan-core"`, and an inventory
+instance references it as `module.input = "clanServices"`.
+
 ## What pkgs provides
 
 | Piece | Gives |

@@ -10,25 +10,25 @@ full procedure.
 
 ## Layout
 - `flake.nix`: inputs (`nixpkgs`/`flake-parts` follow `external-systems/pkgs`; `skills-*` sources are `flake = false`) and the imports (`org-pkgs.flakeModules.default` brings treefmt, docs and slides, lock-sync).
-- `flake-module.nix`: everything consumers evaluate. `sources` (raw inputs), `ownGroups` (this repo's skills by group), `selections` (ready-made source lists), `externalSkills` presets (`base` = the `core` group and the default, `full`, `sandbox`), `mkSkillsTree`, `mkSkillsRuntime`, `packages.*`.
+- `flake-module.nix`: everything consumers evaluate. `sources` (raw inputs), `ownGroups` (this repo's skills by group), `selections` (ready-made source lists), `externalSkills` presets (`base` = the `core` group and the default, `full`), `mkSkillsTree`, `mkSkillsRuntime`, `packages.*`.
 - `lib/mk-skills.nix`: `mkSkills`/`skillSet`, a drop-in for the AGENTS flake's `mkSkills`. `lib/mk-skills-runtime.nix`: the runtime buildEnv. `lib/check-skill-metadata.py`: frontmatter validator.
 - `runtime/default.nix`: per-skill runtime needs (`packages`, `python`, `node`, `office`). `runtime/npm/`: npm modules on `NODE_PATH`.
 - `checks/flake-module.nix`: the skill gates (`checks.*`) and the `package-skills` and `skills-drift` apps. No dev partition and no dev inputs: formatting and docs come from org-pkgs.
 - `devenv.yaml` + `devenv.lock` + `devenv.nix`: the dev shell (devenv CLI; the org shell comes from external-systems/pkgs as `org-pkgs/devenv`). There is no flake devShell.
 - `documentation/`: the docs site (`docs/`) and slide deck (`slides/slides.md`), built by `org-pkgs.flakeModules.docs`; `documentation/flake-module.nix` holds the `docs.*` settings.
-- `skills/<name>/SKILL.md`: this repo's skills, with optional `references/` and `runtime.nix`. `skills/external-systems` is the org router: org process topics are its `references/`, not separate skills.
+- `skills/<name>/SKILL.md`: this repo's skills, with optional `references/` and `runtime.nix`. `skills/external-systems` is the org router: each org standard is a row in its "Org standards" table plus `references/<topic>.md`, not a separate skill; `checks.router-size` keeps its SKILL.md at 10,000 characters or less.
 - `rules/ground-rules.md`: the org ground rules, exported as `lib.groundRules` for every agent's system prompt (modules `homeModules.agents`); `checks.ground-rules-size` caps it at 2000 characters.
 
 ## Consumers
 - external-systems/modules (`flake-parts/homeModules/agents/agents.nix`): `homeModules.agents` calls `mkSkillsTree` and `mkSkillsRuntime` with `homeSpec.agents.skills.{preset,extraSources}` and links the tree into pi (`~/.agents/skills`), kimi-code (`~/.kimi-code/skills`), claude-code (`~/.claude/skills`) and opencode.
-- external-systems/home: per-user profiles set `preset` and `extraSources`. The code-agent image uses `preset = "sandbox"`.
+- external-systems/home: per-user profiles set `preset` and `extraSources`.
 - Changes reach machines only after `nix flake update skills` in the consumer and a human-run deploy.
 
 ## Tool loop
 - `git add` new files before any `nix` command. Nix evaluates the git tree, so untracked files do not exist for it.
 - The shell is devenv. If `DEVENV_ROOT` is unset, run commands with `devenv shell -- <cmd>`.
 - For any change, run `fmt` (treefmt: alejandra, deadnix, statix, nixf-diagnose, shellcheck, sizelint). `check-skills` validates frontmatter without Nix.
-- Gate: `check` (`nix flake check`). It runs `treefmt`, `lock-sync`, `documentation`, `slides`, `skill-frontmatter`, `own-skills-grouped`, `skills-runtime-coverage`, `ground-rules-size`, the `base`/`full`/`sandbox` trees, `skills-runtime`, `package-skills` and `vm-tests-skill-flags` (`skills/external-systems/references/vm-tests.md` documents every `vm-test --help` flag). Markdown-only skill edits still need `skill-frontmatter` and `own-skills-grouped`, so run the full check anyway: it is cheap apart from the first `skills-runtime` build.
+- Gate: `check` (`nix flake check`). It runs `treefmt`, `lock-sync`, `documentation`, `slides`, `skill-frontmatter`, `own-skills-grouped`, `skills-runtime-coverage`, `ground-rules-size`, `router-size`, the `base`/`full` trees, `skills-runtime`, `package-skills` and `vm-tests-skill-flags` (`skills/external-systems/references/vm-tests.md` documents every `vm-test --help` flag). Markdown-only skill edits still need `skill-frontmatter` and `own-skills-grouped`, so run the full check anyway: it is cheap apart from the first `skills-runtime` build.
 - Inspect a tree: `ls $(nix build --no-link --print-out-paths .#base)`.
 - Add a source: add the input, then `nix flake lock`. Bump one source with `nix flake update skills-<name>`. Never bump `pkgs` casually, because it moves nixpkgs for the whole org; when you do, run `sync-locks` in the same commit.
 - Docs: `nix build .#documentation`, then open `result/index.html` from disk; `devenv up` for live preview on :8981.

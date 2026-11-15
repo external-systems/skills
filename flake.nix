@@ -46,14 +46,6 @@
       url = "github:mattpocock/skills";
       flake = false;
     };
-    # OpenShell source tree, used only as a skill source (skills/ and
-    # .agents/skills/ both ship SKILL.md dirs). flake = false keeps its
-    # package graph out of this lock; keep the tag in step with the
-    # openshell input of the consuming fleet flake.
-    skills-openshell = {
-      url = "github:NVIDIA/OpenShell?ref=v0.1.2";
-      flake = false;
-    };
   };
 
   outputs = inputs:
