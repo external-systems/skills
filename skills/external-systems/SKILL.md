@@ -85,7 +85,7 @@ Read the linked file or skill when a task touches the standard.
 
 | Standard | The rule | Detail |
 |---|---|---|
-| Repo shape | One `org-pkgs` input, `flakeModules.default`, devenv shell, org CI, ruleset, docs, `AGENTS.md` | [references/flake-standard.md](references/flake-standard.md) |
+| Repo shape | One `org-pkgs` input, `flakeModules.default`, devenv shell, git hooks, org CI, ruleset, docs, `AGENTS.md` | [references/flake-standard.md](references/flake-standard.md) |
 | Secrets | Tooling secrets live in 1Password and load through varlock (`.env.schema` committed, no `.env` values); machine secrets are clan vars | [references/secrets.md](references/secrets.md) |
 | Git and PRs | Clones on `main`, one worktree per branch, squash PRs, upstream merges first | the ground rules, "Changing a repo" and "Merge order" below |
 | Nix code | treefmt (alejandra, deadnix, statix, nixf-diagnose), nesting and quoting rules, `fmt` then `check` | the `nix-style` skill |
