@@ -42,21 +42,23 @@ The sections after this one hold the templates and procedures.
   (scripts `fmt`, `check`, `sync-locks`, `docs-build`, `docs`, `slides`,
   `worktree`; `devenv up` serves docs on :8981, slides on :8982).
   `devenv.nix` adds the repo's own tools. No flake `devShells`.
-- **Git hooks.** The org shell installs a `pre-commit` hook that runs
-  `nix fmt -- --ci` (cachix/git-hooks.nix through devenv, run by prek).
-  devenv reads inputs only from the repo's own `devenv.yaml`, so a repo
-  opts in with `git-hooks: {follows: org-pkgs/git-hooks}` there and
+- **Git hooks, always.** Every org repo has them, the same way it has
+  the devenv shell: no opt-out. The org shell installs a `pre-commit` hook
+  that runs `nix fmt -- --ci` (cachix/git-hooks.nix through devenv, run by
+  prek). devenv reads inputs only from the repo's own `devenv.yaml`, so
+  every repo has `git-hooks: {follows: org-pkgs/git-hooks}` there and
   `.pre-commit-config.yaml` in `.gitignore` (the shell writes it as a link
-  into the store; without the ignore, `git add -A` commits it). Order:
-  `nix flake update org-pkgs`, `nix run .#sync-locks` (outside the shell:
-  it cannot start while `devenv.yaml` pins a pkgs without git-hooks), then
-  the `follows` line and `devenv shell -- true`. Without
-  the input the hooks stay off and the shell prints a note. Repo hooks go
+  into the store; without the ignore, `git add -A` commits it).
+  `checks.git-hooks` (`flakeModules.default`) fails CI when either is
+  missing; without the input the shell does not start. Moving a repo to
+  a pkgs with hooks: `nix flake update org-pkgs`, `nix run .#sync-locks`
+  (outside the shell, which cannot start yet), then the two lines and
+  `devenv shell -- true`. Repo hooks go
   in `devenv.nix` (`git-hooks.hooks.<name>`, `pass_filenames = false`,
   `stages`) and stay fast; a full `check` is not a hook. Worktrees share
   the clone's hooks but each reads its own config: a worktree that never
   entered the shell cannot commit (`config file not found`), so enter it
-  once (`worktree new` does). A branch from before its repo opted in:
+  once (`worktree new` does). A branch from before its repo had hooks:
   rebase onto `main`. Hooks are local feedback; CI stays the gate. Never
   skip them (ground rules).
 - **`.vscode/settings.json`** points nixd at the workspace flake
@@ -119,7 +121,7 @@ instance references it as `module.input = "clanServices"`.
 | `inputs.org-pkgs.flakeModules.treefmt` | org linters: `formatter`, `checks.treefmt` |
 | `inputs.org-pkgs.flakeModules.docs` | MkDocs site + reveal.js deck: `packages.documentation`, `packages.slides`, `apps.watch-documentation`, `apps.serve-slides` ([org-docs.md](org-docs.md)) |
 | `inputs.org-pkgs.flakeModules.python` | Python repos (`pyproject.toml` + `uv.lock` at the root, switches itself on): uv2nix packages versioned `<major>.<minor>.<commits>`, apps, `checks.python-{pytest,ty,uv-lock,version}`, ruff in treefmt, `vmTests.python-cli` (the `uv2nix` skill) |
-| `inputs.org-pkgs.flakeModules.default` | treefmt + docs + vmTests + python, `checks.lock-sync`, `apps.sync-locks`, `documentation`/`slides` as checks |
+| `inputs.org-pkgs.flakeModules.default` | treefmt + docs + vmTests + python, `checks.lock-sync`, `checks.git-hooks`, `apps.sync-locks`, `documentation`/`slides` as checks |
 | `org-pkgs/devenv` (devenv.yaml `imports`) | the org shell: `fmt`, `check`, `sync-locks`, `docs-build`, `docs`, `slides` scripts; `devenv up` serves docs :8981 and slides :8982; `devenv test` gates |
 | `org-pkgs/devenv/python` (devenv.yaml `imports`, Python repos) | the editable uv2nix venv, `uv`, `ruff`, `ty`, the uv settings |
 | `templates.default` | the whole layout below |
