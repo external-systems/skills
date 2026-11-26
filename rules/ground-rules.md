@@ -5,4 +5,5 @@ external-systems ground rules (every repo of the external-systems GitHub org; cl
 - At session start, remove worktrees whose PR merged or closed (`gh pr view <branch> --json state`): `git worktree remove <path>`, `git branch -D <branch>`, `git worktree prune`.
 - Never push to main, approve or bypass a ruleset, or merge unless the owner allows it for that repo in the session. Never deploy (`clan machines update`, `nixos-rebuild`) or run `clan vars generate` on main: give the owner the command.
 - Before pushing: `git add -A`, `fmt`, `check`. Say in the PR what ran and its result.
+- Git hooks are part of the gate: never skip them (`--no-verify`, `-n`, `core.hooksPath`, `PREK_ALLOW_NO_CONFIG`) unless the owner says so; fix what they report. In a new worktree, run `devenv shell -- true` before the first commit.
 - Secrets come from 1Password through varlock (`.env.schema`, `varlock run -- <cmd>`), never from a `.env` file. Never print or write a secret, and no tokens, IP addresses or account ids in a public repo, commit or PR.
