@@ -38,16 +38,33 @@ The sections after this one hold the templates and procedures.
   `tests/flake-module.nix`). A heavy test-only input needs the owner's
   yes.
 - **The devenv CLI shell.** `devenv.yaml` takes `org-pkgs`, follows
-  `org-pkgs/nixpkgs`, imports `org-pkgs/devenv` (scripts `fmt`, `check`,
-  `sync-locks`, `docs-build`, `docs`, `slides`; `devenv up` serves docs
-  on :8981, slides on :8982). `devenv.nix` adds the repo's own tools. No
-  flake `devShells`.
+  `org-pkgs/nixpkgs` and `org-pkgs/git-hooks`, imports `org-pkgs/devenv`
+  (scripts `fmt`, `check`, `sync-locks`, `docs-build`, `docs`, `slides`,
+  `worktree`; `devenv up` serves docs on :8981, slides on :8982).
+  `devenv.nix` adds the repo's own tools. No flake `devShells`.
+- **Git hooks.** The org shell installs a `pre-commit` hook that runs
+  `nix fmt -- --ci` (cachix/git-hooks.nix through devenv, run by prek).
+  devenv reads inputs only from the repo's own `devenv.yaml`, so a repo
+  opts in with `git-hooks: {follows: org-pkgs/git-hooks}` there and
+  `.pre-commit-config.yaml` in `.gitignore` (the shell writes it as a link
+  into the store; without the ignore, `git add -A` commits it). Order:
+  `nix flake update org-pkgs`, `nix run .#sync-locks` (outside the shell:
+  it cannot start while `devenv.yaml` pins a pkgs without git-hooks), then
+  the `follows` line and `devenv shell -- true`. Without
+  the input the hooks stay off and the shell prints a note. Repo hooks go
+  in `devenv.nix` (`git-hooks.hooks.<name>`, `pass_filenames = false`,
+  `stages`) and stay fast; a full `check` is not a hook. Worktrees share
+  the clone's hooks but each reads its own config: a worktree that never
+  entered the shell cannot commit (`config file not found`), so enter it
+  once (`worktree new` does). A branch from before its repo opted in:
+  rebase onto `main`. Hooks are local feedback; CI stays the gate. Never
+  skip them (ground rules).
 - **`.vscode/settings.json`** points nixd at the workspace flake
   (`builtins.getFlake (builtins.toString ./.)`) and nixpkgs with the org
   overlay, with `debug = true;` in `mkFlake`.
-- **One nixpkgs in `flake.lock` and `devenv.lock`.** After
-  `nix flake update org-pkgs`, run `sync-locks` in the same commit; never
-  move nixpkgs with a bare `devenv update`.
+- **One nixpkgs in `flake.lock` and `devenv.lock`** (and one git-hooks).
+  After `nix flake update org-pkgs`, run `sync-locks` in the same commit;
+  never move nixpkgs with a bare `devenv update`.
 - **The badge row** (ci, release, docs, license, built with Nix) under
   the title of `README.md` and `documentation/docs/index.md`, as in the
   template, minus badges the repo has no source for. Private repos get
@@ -56,7 +73,8 @@ The sections after this one hold the templates and procedures.
   loop, Rules) and `CLAUDE.md` containing `@AGENTS.md`, kept in step
   with the code in the same PR.
 - **No build output committed**: `result*`, `_site/`, `site/`,
-  `documentation/site/`, `.devenv*` are gitignored; CI is the only
+  `documentation/site/`, `.devenv*`, `.pre-commit-config.yaml` are
+  gitignored; CI is the only
   publisher; no `gh-pages`.
 - **Public unless it holds secrets.** No secret, IP, account,
   subscription or tenant id in any public file, commit or PR. Secrets a
@@ -119,15 +137,16 @@ flake.nix / flake.lock      inputs follow org-pkgs; imports
                             inputs.org-pkgs.flakeModules.default
 flake-parts/                the repo's modules (import-tree), including
                             docs.nix (docs.* settings) and repo checks
-devenv.yaml / devenv.lock   the shell: org-pkgs input, nixpkgs follows
-                            org-pkgs/nixpkgs, imports org-pkgs/devenv
+devenv.yaml / devenv.lock   the shell: org-pkgs input, nixpkgs and
+                            git-hooks follow org-pkgs, imports
+                            org-pkgs/devenv
 devenv.nix                  this repo's languages, services, processes
 documentation/              docs/*.md, slides/slides.md (no Nix, no
                             mkdocs.yml, no deck index.html)
 .github/workflows/ci.yml    the org CI caller (see Org CI)
 .github/rulesets/default.json  the org branch ruleset
 AGENTS.md, README.md, .gitignore (result*, .devenv*, devenv.local.nix,
-                            _site/, site/)
+                            _site/, site/, .pre-commit-config.yaml)
 .vscode/settings.json       nixd settings (below); extensions.json
                             recommends jnoortheen.nix-ide
 ```
